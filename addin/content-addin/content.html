@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Quiz Content</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https: wss:; connect-src https: wss:;
+                 img-src https: data:; style-src 'self' 'unsafe-inline' https:;
+                 script-src 'self' https: 'unsafe-inline'; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.sharepoint.com;">
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    html,body {margin:0;padding:12px;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    table {border-collapse:collapse;width:100%}
+    th,td {border:1px solid #ddd;padding:6px 8px}
+    thead th {position:sticky;top:0;background:#f5f5f5}
+    .first {font-weight:600;background:#e8f5e8}
+    .fs {color:#c00}
+    .status {margin-bottom:8px;padding:4px 8px;border-radius:4px}
+    .status.connected {background:#d4edda;color:#155724}
+    .status.disconnected {background:#f8d7da;color:#721c24}
+    .status.connecting {background:#fff3cd;color:#856404}
+  </style>
+</head>
+<body>
+  <div id="status" class="status connecting">Connecting…</div>
+  <table id="tbl">
+    <thead><tr><th>#</th><th>Игрок</th><th>Кнопка</th><th>Δt (мс)</th><th>Фальстарт</th><th>Всего</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+<script>
+(() => {
+  const room = new URLSearchParams(location.search).get('room') || 'R1';
+  const wsUrl = `ws://localhost:8080/ws?room=${encodeURIComponent(room)}&role=viewer`;
+  let ws, state = { phase: 'lobby', enableAt: 0, players: [] };
+
+  const $status = document.getElementById('status');
+  const $tbody  = document.querySelector('#tbl tbody');
+
+  function connect() {
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => { 
+      $status.textContent = 'Connected'; 
+      $status.className = 'status connected';
+    };
+    ws.onclose = () => { 
+      $status.textContent = 'Disconnected, retry…'; 
+      $status.className = 'status disconnected';
+      setTimeout(connect, 1000); 
+    };
+    ws.onerror = () => { 
+      $status.textContent = 'Error (see console)'; 
+      $status.className = 'status disconnected';
+    };
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'state') { 
+        state = msg.data; 
+        render(); 
+      }
+      if (msg.type === 'click') { 
+        applyClick(msg); 
+        render(); 
+      }
+    };
+  }
+
+  function applyClick(ev) {
+    const p = state.players[ev.userId];
+    if (!p) return;
+    
+    const now = Date.now();
+    const enableTime = new Date(state.enableAt).getTime();
+    const deltaMs = now - enableTime;
+    const isFalseStart = state.phase !== 'started' || now < enableTime;
+    
+    p.lastDeltaMs = isFalseStart ? null : deltaMs;
+    p.falseStarts = (p.falseStarts || 0) + (isFalseStart ? 1 : 0);
+    p.clickCount = (p.clickCount || 0) + (isFalseStart ? 0 : 1);
+  }
+
+  function render() {
+    const players = Object.values(state.players || {});
+    const rows = players
+      .filter(p => p.connected)
+      .sort((a,b) => {
+        const aTime = a.lastDeltaMs ?? 9e9;
+        const bTime = b.lastDeltaMs ?? 9e9;
+        return aTime - bTime;
+      })
+      .map((p,i) => `
+        <tr class="${i===0 && (p.lastDeltaMs ?? 9e9) < 9e9 ? 'first' : ''}">
+          <td>${i+1}</td>
+          <td>${p.name || p.userId}</td>
+          <td>${p.buttonId || ''}</td>
+          <td>${p.lastDeltaMs ?? ''}</td>
+          <td class="${p.lastDeltaMs==null && p.falseStarts>0 ? 'fs' : ''}">${p.falseStarts || 0}</td>
+          <td>${p.clickCount || 0}</td>
+        </tr>`);
+    $tbody.innerHTML = rows.join('');
+  }
+
+  Office.onReady(() => connect());
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Backend Go server
+  backend:
+    build: ./backend
+    container_name: powerpoint-quiz-backend
+    environment:
+      - PORT=443
+      - HOST=0.0.0.0
+      - TLS_ENABLED=true
+      - TLS_CERT_FILE=/certs/cert.pem
+      - TLS_KEY_FILE=/certs/key.pem
+    volumes:
+      - ./addin:/root/addin
+      - ./certs:/certs:ro
+    ports:
+      - "443:443"
+    networks:
+      - quiz-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-check-certificate", "--quiet", "--tries=1", "--spider", "https://localhost:443"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Frontend React app
+  frontend:
+    build: ./frontend
+    container_name: powerpoint-quiz-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - quiz-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Nginx reverse proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: powerpoint-quiz-nginx
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - quiz-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+networks:
+  quiz-network:
+    driver: bridge
+
+volumes:
+  certs:
+  ssl:

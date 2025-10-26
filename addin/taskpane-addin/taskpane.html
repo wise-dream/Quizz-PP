@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Quiz Host</title>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self' https: wss:; connect-src https: wss:;
+                 img-src https: data:; style-src 'self' 'unsafe-inline' https:;
+                 script-src 'self' https: 'unsafe-inline'; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.sharepoint.com;">
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    body {margin:0;padding:12px;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    button {padding:8px 12px;margin:6px 6px 0 0;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer}
+    button:hover {background:#f5f5f5}
+    button:disabled {opacity:0.6;cursor:not-allowed}
+    .row {margin:8px 0}
+    .status {margin:8px 0;padding:4px 8px;border-radius:4px}
+    .status.connected {background:#d4edda;color:#155724}
+    .status.disconnected {background:#f8d7da;color:#721c24}
+    .status.connecting {background:#fff3cd;color:#856404}
+    input {padding:4px 8px;border:1px solid #ccc;border-radius:4px;margin:0 4px}
+    .phase-info {margin:8px 0;padding:8px;background:#f8f9fa;border-radius:4px;border-left:4px solid #007bff}
+    .players-list {margin:8px 0;max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:4px}
+    .player-item {padding:4px 8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between}
+    .player-item:last-child {border-bottom:none}
+  </style>
+</head>
+<body>
+  <div class="row">
+    Комната: <input id="room" value="R1" size="8">
+    <button id="connect">Connect</button>
+    <div id="status" class="status disconnected">—</div>
+  </div>
+  
+  <div class="row">
+    <button data-act="ready" data-delay="3000">Ready 3s</button>
+    <button data-act="start">Start now</button>
+    <button data-act="finish">Finish</button>
+    <button data-act="reset">Reset</button>
+  </div>
+
+  <div id="phase-info" class="phase-info" style="display:none">
+    <strong>Фаза:</strong> <span id="current-phase">—</span><br>
+    <strong>Включение:</strong> <span id="enable-time">—</span>
+  </div>
+
+  <div id="players-list" class="players-list" style="display:none">
+    <div style="padding:4px 8px;background:#f5f5f5;font-weight:bold;border-bottom:1px solid #ddd">Игроки:</div>
+    <div id="players-content"></div>
+  </div>
+
+<script>
+(() => {
+  let ws;
+  const $room = document.getElementById('room');
+  const $status = document.getElementById('status');
+  const $phaseInfo = document.getElementById('phase-info');
+  const $currentPhase = document.getElementById('current-phase');
+  const $enableTime = document.getElementById('enable-time');
+  const $playersList = document.getElementById('players-list');
+  const $playersContent = document.getElementById('players-content');
+
+  function updateStatus(text, className) {
+    $status.textContent = text;
+    $status.className = `status ${className}`;
+  }
+
+  function openWs() {
+    if (ws) try { ws.close(); } catch {}
+    const url = `ws://localhost:8080/ws?room=${encodeURIComponent($room.value)}&role=host`;
+    ws = new WebSocket(url);
+    ws.onopen = () => updateStatus('Connected', 'connected');
+    ws.onclose = () => updateStatus('Closed', 'disconnected');
+    ws.onerror = () => updateStatus('Error', 'disconnected');
+    ws.onmessage = (ev) => {
+      const msg = JSON.parse(ev.data);
+      if (msg.type === 'state') {
+        updatePhaseInfo(msg.data);
+        updatePlayersList(msg.data);
+      }
+    };
+  }
+
+  function updatePhaseInfo(state) {
+    $currentPhase.textContent = state.phase || 'lobby';
+    if (state.enableAt) {
+      const enableDate = new Date(state.enableAt);
+      $enableTime.textContent = enableDate.toLocaleTimeString();
+      $phaseInfo.style.display = 'block';
+    } else {
+      $phaseInfo.style.display = 'none';
+    }
+  }
+
+  function updatePlayersList(state) {
+    const players = Object.values(state.players || {});
+    if (players.length > 0) {
+      $playersContent.innerHTML = players
+        .filter(p => p.connected)
+        .map(p => `
+          <div class="player-item">
+            <span>${p.name || p.userId}</span>
+            <span>Клики: ${p.clickCount || 0}, Фальстарты: ${p.falseStarts || 0}</span>
+          </div>
+        `).join('');
+      $playersList.style.display = 'block';
+    } else {
+      $playersList.style.display = 'none';
+    }
+  }
+
+  document.getElementById('connect').onclick = openWs;
+
+  document.body.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-act]');
+    if (!btn || !ws || ws.readyState !== 1) return;
+    
+    const act = btn.dataset.act;
+    const roomId = $room.value;
+    
+    if (act === 'ready') {
+      const delayMs = Number(btn.dataset.delay) || 0;
+      ws.send(JSON.stringify({ 
+        type: 'host_set_state', 
+        quizId: roomId,
+        phase: 'ready', 
+        delayMs: delayMs 
+      }));
+    } else if (act === 'start') {
+      ws.send(JSON.stringify({ 
+        type: 'host_set_state', 
+        quizId: roomId,
+        phase: 'ready', 
+        delayMs: 0 
+      }));
+    } else if (act === 'finish') {
+      ws.send(JSON.stringify({ 
+        type: 'host_set_state', 
+        quizId: roomId,
+        phase: 'finished' 
+      }));
+    } else if (act === 'reset') {
+      ws.send(JSON.stringify({ 
+        type: 'host_set_state', 
+        quizId: roomId,
+        phase: 'lobby' 
+      }));
+    }
+  });
+
+  Office.onReady(() => {});
+})();
+</script>
+</body>
+</html>

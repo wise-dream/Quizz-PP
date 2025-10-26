@@ -1,0 +1,395 @@
+package services
+
+import (
+	"crypto/rand"
+	"encoding/json"
+	"fmt"
+	"log"
+	"math/big"
+	"net/http"
+	"strings"
+	"time"
+
+	"powerpoint-quiz/internal/models"
+
+	"github.com/gorilla/websocket"
+)
+
+// WebSocketService handles WebSocket connections and events
+type WebSocketService struct {
+	hub *models.Hub
+}
+
+// NewWebSocketService creates a new WebSocket service
+func NewWebSocketService() *WebSocketService {
+	return &WebSocketService{
+		hub: &models.Hub{
+			Rooms:      make(map[string]*models.Room),
+			Clients:    make(map[*models.Client]bool),
+			Register:   make(chan *models.Client),
+			Unregister: make(chan *models.Client),
+			Broadcast:  make(chan []byte),
+		},
+	}
+}
+
+// GetHub returns the hub instance
+func (ws *WebSocketService) GetHub() *models.Hub {
+	return ws.hub
+}
+
+// generateRoomCode generates a random 4-character room code
+func generateRoomCode() string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	code := make([]byte, 4)
+	for i := range code {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		code[i] = charset[num.Int64()]
+	}
+	return string(code)
+}
+
+// generateAdminPassword generates a random admin password
+func generateAdminPassword() string {
+	const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	password := make([]byte, 6)
+	for i := range password {
+		num, _ := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		password[i] = charset[num.Int64()]
+	}
+	return string(password)
+}
+
+// Run starts the hub's main loop
+func (ws *WebSocketService) Run() {
+	for {
+		select {
+		case client := <-ws.hub.Register:
+			ws.hub.Clients[client] = true
+			log.Printf("Client connected: %s", client.UserID)
+
+		case client := <-ws.hub.Unregister:
+			if _, ok := ws.hub.Clients[client]; ok {
+				delete(ws.hub.Clients, client)
+				close(client.Send)
+				log.Printf("Client disconnected: %s", client.UserID)
+			}
+
+		case message := <-ws.hub.Broadcast:
+			for client := range ws.hub.Clients {
+				select {
+				case client.Send <- message:
+				default:
+					close(client.Send)
+					delete(ws.hub.Clients, client)
+				}
+			}
+		}
+	}
+}
+
+// HandleEvent processes incoming WebSocket events
+func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Event) {
+	ws.hub.Mu.Lock()
+	defer ws.hub.Mu.Unlock()
+
+	roomID := event.QuizID
+	if roomID == "" {
+		roomID = client.RoomID // Use client's room if not specified
+	}
+
+	// Get or create room
+	room, exists := ws.hub.Rooms[roomID]
+	if !exists {
+		room = &models.Room{
+			ID:        roomID,
+			Phase:     models.PhaseLobby,
+			Players:   make(map[string]*models.Player),
+			CreatedAt: time.Now(),
+		}
+		ws.hub.Rooms[roomID] = room
+	}
+
+	room.Mu.Lock()
+	defer room.Mu.Unlock()
+
+	switch event.Type {
+	case models.EventCreateRoom:
+		ws.handleCreateRoom(client, event)
+
+	case models.EventAdminAuth:
+		ws.handleAdminAuth(client, event)
+
+	case models.EventJoinTeam:
+		ws.handleJoinTeam(client, room, event)
+
+	case models.EventCreateTeam:
+		ws.handleCreateTeam(client, room, event)
+
+	case models.EventJoin:
+		ws.handleJoin(client, room, event)
+
+	case models.EventClick:
+		ws.handleClick(client, room, event)
+
+	case models.EventHostSetState:
+		ws.handleHostSetState(client, room, event)
+	}
+}
+
+// handleJoin processes player join events
+func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room, event models.Event) {
+	player := &models.Player{
+		ID:        event.UserID,
+		UserID:    event.UserID,
+		ButtonID:  event.ButtonID,
+		Name:      fmt.Sprintf("Player %s", event.UserID),
+		Connected: true,
+	}
+	room.Players[event.UserID] = player
+	client.UserID = event.UserID
+	log.Printf("Player %s joined room %s", event.UserID, room.ID)
+	ws.broadcastRoomState(room)
+}
+
+// handleClick processes player click events
+func (ws *WebSocketService) handleClick(client *models.Client, room *models.Room, event models.Event) {
+	player, exists := room.Players[event.UserID]
+	if !exists {
+		// Auto-create player if not exists
+		player = &models.Player{
+			ID:        event.UserID,
+			UserID:    event.UserID,
+			ButtonID:  event.ButtonID,
+			Name:      fmt.Sprintf("Player %s", event.UserID),
+			Connected: true,
+		}
+		room.Players[event.UserID] = player
+	}
+
+	clickTime := time.Now()
+	player.LastClick = clickTime
+	player.ClickCount++
+
+	// Check for false start
+	if room.Phase != models.PhaseStarted || clickTime.Before(room.EnableAt) {
+		player.FalseStarts++
+		log.Printf("False start by player %s", event.UserID)
+	}
+
+	log.Printf("Player %s clicked (total: %d, false starts: %d)",
+		event.UserID, player.ClickCount, player.FalseStarts)
+	ws.broadcastRoomState(room)
+}
+
+// handleHostSetState processes host state change events
+func (ws *WebSocketService) handleHostSetState(client *models.Client, room *models.Room, event models.Event) {
+	// Only allow host role to change state
+	if client.Role != "host" {
+		log.Printf("Non-host client attempted to change state")
+		return
+	}
+
+	if event.Phase == models.PhaseReady {
+		room.Phase = models.PhaseReady
+		room.EnableAt = time.Now().Add(time.Duration(event.DelayMs) * time.Millisecond)
+
+		// Auto-transition to started after delay
+		go func() {
+			time.Sleep(time.Duration(event.DelayMs) * time.Millisecond)
+			room.Mu.Lock()
+			room.Phase = models.PhaseStarted
+			room.Mu.Unlock()
+			ws.broadcastRoomState(room)
+		}()
+	} else {
+		room.Phase = event.Phase
+	}
+
+	log.Printf("Room %s phase changed to %s by host", room.ID, event.Phase)
+	ws.broadcastRoomState(room)
+}
+
+// broadcastRoomState sends room state to all clients in the room
+func (ws *WebSocketService) broadcastRoomState(room *models.Room) {
+	stateEvent := models.Event{
+		Type: models.EventState,
+		Data: room,
+	}
+
+	message, err := json.Marshal(stateEvent)
+	if err != nil {
+		log.Printf("Error marshaling state: %v", err)
+		return
+	}
+
+	// Broadcast to all clients in the room
+	for client := range ws.hub.Clients {
+		if client.RoomID == room.ID {
+			select {
+			case client.Send <- message:
+			default:
+				close(client.Send)
+				delete(ws.hub.Clients, client)
+			}
+		}
+	}
+}
+
+// handleCreateRoom processes room creation events
+func (ws *WebSocketService) handleCreateRoom(client *models.Client, event models.Event) {
+	roomCode := generateRoomCode()
+	adminPassword := generateAdminPassword()
+
+	room := &models.Room{
+		ID:            fmt.Sprintf("room_%d", time.Now().Unix()),
+		Code:          roomCode,
+		Phase:         models.PhaseLobby,
+		Players:       make(map[string]*models.Player),
+		Teams:         make(map[string]*models.Team),
+		CreatedAt:     time.Now(),
+		AdminPassword: adminPassword,
+	}
+
+	ws.hub.Rooms[roomCode] = room
+	client.RoomID = roomCode
+	client.Role = "admin"
+
+	log.Printf("Room created: %s, Admin password: %s", roomCode, adminPassword)
+
+	// Send room creation response
+	response := models.Event{
+		Type:       models.EventState,
+		Data:       room,
+		AdminToken: adminPassword,
+	}
+
+	ws.sendEventToClient(client, response)
+}
+
+// handleAdminAuth processes admin authentication
+func (ws *WebSocketService) handleAdminAuth(client *models.Client, event models.Event) {
+	room, exists := ws.hub.Rooms[event.RoomCode]
+	if !exists {
+		ws.sendErrorToClient(client, "Room not found")
+		return
+	}
+
+	if room.AdminPassword != event.Password {
+		ws.sendErrorToClient(client, "Invalid admin password")
+		return
+	}
+
+	client.RoomID = event.RoomCode
+	client.Role = "admin"
+
+	log.Printf("Admin authenticated for room: %s", event.RoomCode)
+	ws.broadcastRoomState(room)
+}
+
+// handleJoinTeam processes team join events
+func (ws *WebSocketService) handleJoinTeam(client *models.Client, room *models.Room, event models.Event) {
+	player, exists := room.Players[event.UserID]
+	if !exists {
+		// Create player if not exists
+		player = &models.Player{
+			ID:        event.UserID,
+			UserID:    event.UserID,
+			Name:      event.Nickname,
+			Connected: true,
+		}
+		room.Players[event.UserID] = player
+	} else {
+		player.Name = event.Nickname
+	}
+
+	// Add player to team
+	if team, exists := room.Teams[event.TeamID]; exists {
+		// Remove player from other teams first
+		for _, t := range room.Teams {
+			for i, p := range t.Players {
+				if p == event.UserID {
+					t.Players = append(t.Players[:i], t.Players[i+1:]...)
+					break
+				}
+			}
+		}
+
+		// Add to new team
+		team.Players = append(team.Players, event.UserID)
+		log.Printf("Player %s joined team %s", event.Nickname, team.Name)
+	}
+
+	ws.broadcastRoomState(room)
+}
+
+// handleCreateTeam processes team creation events
+func (ws *WebSocketService) handleCreateTeam(client *models.Client, room *models.Room, event models.Event) {
+	if client.Role != "admin" {
+		ws.sendErrorToClient(client, "Only admin can create teams")
+		return
+	}
+
+	teamID := fmt.Sprintf("team_%d", time.Now().Unix())
+	team := &models.Team{
+		ID:        teamID,
+		Name:      event.TeamName,
+		Color:     event.TeamColor,
+		Players:   []string{},
+		Score:     0,
+		CreatedAt: time.Now(),
+	}
+
+	room.Teams[teamID] = team
+	log.Printf("Team created: %s (%s)", event.TeamName, teamID)
+	ws.broadcastRoomState(room)
+}
+
+// sendEventToClient sends an event to a specific client
+func (ws *WebSocketService) sendEventToClient(client *models.Client, event models.Event) {
+	message, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("Error marshaling event: %v", err)
+		return
+	}
+
+	select {
+	case client.Send <- message:
+	default:
+		close(client.Send)
+		delete(ws.hub.Clients, client)
+	}
+}
+
+// sendErrorToClient sends an error message to a specific client
+func (ws *WebSocketService) sendErrorToClient(client *models.Client, message string) {
+	errorEvent := models.Event{
+		Type:    models.EventError,
+		Message: message,
+	}
+	ws.sendEventToClient(client, errorEvent)
+}
+
+// GetUpgrader returns a configured WebSocket upgrader
+func GetUpgrader() websocket.Upgrader {
+	return websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			// In production, check allowed origins
+			origin := r.Header.Get("Origin")
+			allowedOrigins := []string{
+				"https://*.office.com",
+				"https://*.officeapps.live.com",
+				"https://*.sharepoint.com",
+			}
+
+			for _, allowed := range allowedOrigins {
+				if strings.Contains(origin, allowed) {
+					return true
+				}
+			}
+
+			// Allow localhost for development
+			return strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")
+		},
+	}
+}
