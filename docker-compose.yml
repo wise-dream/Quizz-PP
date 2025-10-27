@@ -1,46 +1,18 @@
-version: "3.8"
-
 services:
-  # ✅ Backend (Go), без TLS, слушает только localhost:8081
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: quiz-backend
-    command: ["./quiz-server", "-addr", ":8081"]
+    command: ["-addr", ":8081"]          # <-- только аргументы к ENTRYPOINT
     environment:
-      # если твоё приложение читает переменные — оставь,
-      # но TLS выключен, т.к. терминируется на nginx-хосте
-      - TLS_ENABLED=false
+      - TLS_ENABLED=false                # TLS терминируется на nginx-хосте
     ports:
-      - "127.0.0.1:8081:8081"   # nginx на хосте проксирует /quizz/ws -> 127.0.0.1:8081/ws
+      - "127.0.0.1:8081:8081"            # nginx ходит на localhost:8081
     healthcheck:
-      # если у тебя нет /healthz — оставь только nc:
-      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8081/healthz || nc -z 127.0.0.1 8081"]
-      interval: 30s
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 || exit 1"]
+      interval: 20s
       timeout: 5s
       retries: 3
     restart: unless-stopped
     networks: [quiz-network]
-
-  # Ⓜ️ (опционально) Frontend внутри контейнера. НЕ нужен, если статику отдаёт хостовый nginx.
-  # Включай только если хочешь поднять /quizz/site через контейнер и отдельно проксировать к нему.
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: quiz-frontend
-    ports:
-      - "127.0.0.1:3000:80"    # если будешь проксировать /quizz/ на контейнер, меняй nginx хоста
-    depends_on: [backend]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-    networks: [quiz-network]
-
-networks:
-  quiz-network:
-    driver: bridge
