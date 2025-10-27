@@ -1,45 +1,34 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+# syntax=docker/dockerfile:1
 
+# ===== Build stage =====
+FROM golang:1.22-alpine AS builder
 WORKDIR /app
 
-# Install git and ca-certificates
 RUN apk add --no-cache git ca-certificates
 
-# Copy go mod files
+# Модульные файлы
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy source code
+# Исходники бэка (контекст ./backend)
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/server
+# Собираем сервер (предполагается main в ./cmd/server)
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/quiz-server ./cmd/server
 
-# Final stage
-FROM alpine:latest
+# ===== Runtime stage =====
+FROM alpine:3.20
+WORKDIR /srv
+RUN apk add --no-cache ca-certificates tzdata
 
-RUN apk --no-cache add ca-certificates tzdata
+# Кладём бинарь
+COPY --from=builder /out/quiz-server /srv/quiz-server
 
-WORKDIR /root/
+# Слушаем 8081 (без TLS — TLS на nginx хосте)
+EXPOSE 8081
 
-# Copy the binary from builder stage
-COPY --from=builder /app/main .
+# Healthcheck: если нет /healthz — можешь удалить, у нас есть запасной в compose
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD wget -q -O- http://127.0.0.1:8081/healthz || exit 1
 
-# Copy static files
-COPY --from=builder /app/addin ./addin
-
-# Create certs directory
-RUN mkdir -p certs
-
-# Expose port
-EXPOSE 443
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-check-certificate --quiet --tries=1 --spider https://localhost:443/health || exit 1
-
-# Run the application
-CMD ["./main"]
+ENTRYPOINT ["/srv/quiz-server"]
+CMD ["-addr", ":8081"]

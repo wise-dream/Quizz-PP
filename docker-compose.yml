@@ -1,70 +1,46 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # Backend Go server
+  # ✅ Backend (Go), без TLS, слушает только localhost:8081
   backend:
-    build: ./backend
-    container_name: powerpoint-quiz-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: quiz-backend
+    command: ["./quiz-server", "-addr", ":8081"]
     environment:
-      - PORT=443
-      - HOST=0.0.0.0
-      - TLS_ENABLED=true
-      - TLS_CERT_FILE=/certs/cert.pem
-      - TLS_KEY_FILE=/certs/key.pem
-    volumes:
-      - ./addin:/root/addin
-      - ./certs:/certs:ro
+      # если твоё приложение читает переменные — оставь,
+      # но TLS выключен, т.к. терминируется на nginx-хосте
+      - TLS_ENABLED=false
     ports:
-      - "443:443"
-    networks:
-      - quiz-network
+      - "127.0.0.1:8081:8081"   # nginx на хосте проксирует /quizz/ws -> 127.0.0.1:8081/ws
     healthcheck:
-      test: ["CMD", "wget", "--no-check-certificate", "--quiet", "--tries=1", "--spider", "https://localhost:443"]
+      # если у тебя нет /healthz — оставь только nc:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8081/healthz || nc -z 127.0.0.1 8081"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
     restart: unless-stopped
+    networks: [quiz-network]
 
-  # Frontend React app
+  # Ⓜ️ (опционально) Frontend внутри контейнера. НЕ нужен, если статику отдаёт хостовый nginx.
+  # Включай только если хочешь поднять /quizz/site через контейнер и отдельно проксировать к нему.
   frontend:
-    build: ./frontend
-    container_name: powerpoint-quiz-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: quiz-frontend
     ports:
-      - "80:80"
-    depends_on:
-      - backend
-    networks:
-      - quiz-network
+      - "127.0.0.1:3000:80"    # если будешь проксировать /quizz/ на контейнер, меняй nginx хоста
+    depends_on: [backend]
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/ || exit 1"]
       interval: 30s
-      timeout: 10s
+      timeout: 5s
       retries: 3
     restart: unless-stopped
-
-  # Nginx reverse proxy (optional, for production)
-  nginx:
-    image: nginx:alpine
-    container_name: powerpoint-quiz-nginx
-    ports:
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - quiz-network
-    restart: unless-stopped
-    profiles:
-      - production
+    networks: [quiz-network]
 
 networks:
   quiz-network:
     driver: bridge
-
-volumes:
-  certs:
-  ssl:

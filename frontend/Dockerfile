@@ -1,31 +1,27 @@
-# Build stage
-FROM node:18-alpine AS builder
-
+# syntax=docker/dockerfile:1
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package files
+# Пакеты
 COPY package*.json ./
+# Для сборки часто нужны devDeps, поэтому БЕЗ --only=production
+RUN npm ci
 
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source code
+# Исходники
 COPY . .
 
-# Build the application
+# Сборка (react-scripts/vite и т.п.)
 RUN npm run build
 
-# Production stage
+# ===== Runtime =====
 FROM nginx:alpine
-
-# Copy built app from builder stage
+# Если react-scripts: артефакт обычно в /app/build
+# Если vite: чаще /app/dist
+# Оставляю как у тебя — /build. При необходимости поменяй на /dist.
 COPY --from=builder /app/build /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Свой nginx.conf можно положить рядом и копировать ниже
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Expose port
 EXPOSE 80
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
