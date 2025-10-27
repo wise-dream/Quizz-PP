@@ -4,15 +4,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: quiz-backend
-    command: ["-addr", ":8081"]          # <-- только аргументы к ENTRYPOINT
     environment:
-      - TLS_ENABLED=false                # TLS терминируется на nginx-хосте
+      - PORT=8081
+      - HOST=0.0.0.0
+      - TLS_ENABLED=false
     ports:
-      - "127.0.0.1:8081:8081"            # nginx ходит на localhost:8081
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z 127.0.0.1 8081 || exit 1"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
+      - "127.0.0.1:8081:8081"
     restart: unless-stopped
-    networks: [quiz-network]
