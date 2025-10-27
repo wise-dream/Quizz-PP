@@ -7,6 +7,8 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -370,26 +372,66 @@ func (ws *WebSocketService) sendErrorToClient(client *models.Client, message str
 	ws.sendEventToClient(client, errorEvent)
 }
 
+func parseAllowedOrigins() []string {
+	raw := os.Getenv("WS_ALLOWED_ORIGINS")
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, strings.TrimRight(p, "/"))
+		}
+	}
+	return out
+}
+
+var allowedOrigins = parseAllowedOrigins()
+
+func checkSameHost(origin string, host string) bool {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	originHost := u.Hostname()
+	return (u.Scheme == "https" || u.Scheme == "http") && strings.EqualFold(originHost, host)
+}
+
+func originAllowed(origin, host string) bool {
+	if origin == "" {
+		return true
+	}
+
+	for _, allowed := range allowedOrigins {
+		if strings.EqualFold(strings.TrimRight(origin, "/"), allowed) {
+			return true
+		}
+	}
+
+	if checkSameHost(origin, host) {
+		return true
+	}
+
+	return false
+}
+
 // GetUpgrader returns a configured WebSocket upgrader
 func GetUpgrader() websocket.Upgrader {
 	return websocket.Upgrader{
+		ReadBufferSize:  4096,
+		WriteBufferSize: 4096,
 		CheckOrigin: func(r *http.Request) bool {
-			// In production, check allowed origins
 			origin := r.Header.Get("Origin")
-			allowedOrigins := []string{
-				"https://*.office.com",
-				"https://*.officeapps.live.com",
-				"https://*.sharepoint.com",
+			ok := originAllowed(origin, r.Host)
+			if !ok {
+				log.Printf("[WS] CheckOrigin reject: origin=%q host=%q allowed=%v ua=%q",
+					origin, r.Host, allowedOrigins, r.UserAgent())
+			} else {
+				log.Printf("[WS] CheckOrigin ok: origin=%q host=%q", origin, r.Host)
 			}
-
-			for _, allowed := range allowedOrigins {
-				if strings.Contains(origin, allowed) {
-					return true
-				}
-			}
-
-			// Allow localhost for development
-			return strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")
+			return ok
 		},
 	}
 }
