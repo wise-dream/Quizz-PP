@@ -1,4 +1,5 @@
 {
+  "homepage": "/quizz",
   "name": "powerpoint-quiz-frontend",
   "version": "1.0.0",
   "private": true,
@@ -29,22 +30,11 @@
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "extends": ["react-app", "react-app/jest"]
   },
   "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
   },
-  "proxy": "https://localhost:443"
+  "proxy": "http://127.0.0.1:8081"
 }
