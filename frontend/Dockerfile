@@ -6,10 +6,10 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-# Собираем фронт (Vite создаёт dist/, CRA создаёт build/)
+# Собираем фронт: Vite => dist/, CRA => build/
 RUN npm run build
 
-# Нормализуем путь артефактов в /out
+# Нормализуем вывод в /out
 RUN if [ -d "dist" ]; then \
       mv dist /out; \
     elif [ -d "build" ]; then \
@@ -21,10 +21,7 @@ RUN if [ -d "dist" ]; then \
     fi
 
 FROM nginx:alpine
-# Кладём собранное в корень nginx
 COPY --from=builder /out/ /usr/share/nginx/html/
-
-# Конфиг nginx для SPA
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
