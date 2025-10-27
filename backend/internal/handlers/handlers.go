@@ -30,11 +30,15 @@ func NewWebSocketHandler(wsService *services.WebSocketService) *WebSocketHandler
 
 // ServeWS handles WebSocket upgrade requests
 func (h *WebSocketHandler) ServeWS(w http.ResponseWriter, r *http.Request) {
+	log.Printf("WebSocket connection attempt from %s", r.RemoteAddr)
+
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade error: %v", err)
 		return
 	}
+
+	log.Printf("WebSocket connection established from %s", r.RemoteAddr)
 
 	// Parse query parameters
 	roomID := r.URL.Query().Get("room")
@@ -82,12 +86,15 @@ func (h *WebSocketHandler) readPump(client *models.Client) {
 			break
 		}
 
+		log.Printf("Received message from %s: %s", client.Conn.RemoteAddr(), string(message))
+
 		var event models.Event
 		if err := json.Unmarshal(message, &event); err != nil {
 			log.Printf("Error unmarshaling event: %v", err)
 			continue
 		}
 
+		log.Printf("Handling event: %+v", event)
 		h.wsService.HandleEvent(client, event)
 	}
 }
@@ -162,8 +169,32 @@ func (h *StaticHandler) ServeStatic(w http.ResponseWriter, r *http.Request) {
 func SetupRoutes(wsHandler *WebSocketHandler, staticHandler *StaticHandler) *mux.Router {
 	r := mux.NewRouter()
 
+	// CORS middleware
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			// Set CORS headers
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+			// Handle preflight requests
+			if req.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, req)
+		})
+	})
+
 	// WebSocket endpoint
 	r.HandleFunc("/ws", wsHandler.ServeWS)
+
+	// Health check endpoint
+	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
 	// Static files
 	r.PathPrefix("/").HandlerFunc(staticHandler.ServeStatic)

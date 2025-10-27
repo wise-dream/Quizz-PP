@@ -12,15 +12,23 @@ export const App: React.FC = () => {
   const { connect, isConnected, user } = useQuiz();
 
   useEffect(() => {
-    // 1) берём из env, 2) иначе строим от window.location с префиксом /quizz/ws
+    // 1) берём из env, 2) иначе строим от window.location с правильным путем
     const wsUrl = (() => {
       const fromEnv = process.env.REACT_APP_WS_URL;
       if (fromEnv && fromEnv.trim()) return fromEnv.trim();
+      
+      // В development режиме используем proxy
+      if (process.env.NODE_ENV === 'development') {
+        return 'ws://localhost:3000/ws';
+      }
+      
+      // В production строим от window.location
       const { protocol, host } = window.location;
       const scheme = protocol === 'https:' ? 'wss' : 'ws';
-      return `${scheme}://${host}/quizz/ws`;
+      return `${scheme}://${host}/ws`;
     })();
 
+    console.log('Connecting to WebSocket:', wsUrl);
     // подключаемся один раз на маунт
     connect(wsUrl).catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
