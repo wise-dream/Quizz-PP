@@ -12,6 +12,7 @@ export interface QuizState {
     name: string;
     email: string;
   } | null;
+  adminPassword: string | null;
 }
 
 const initialState: QuizState = {
@@ -22,6 +23,7 @@ const initialState: QuizState = {
   error: null,
   wsService: null,
   adminData: null,
+  adminPassword: null,
 };
 
 export const quizSlice = createSlice({
@@ -106,6 +108,11 @@ export const quizSlice = createSlice({
       console.log('🔄 [Redux] setAdminData:', action.payload);
       state.adminData = action.payload;
     },
+    
+    setAdminPassword: (state, action: PayloadAction<string>) => {
+      console.log('🔄 [Redux] setAdminPassword:', action.payload);
+      state.adminPassword = action.payload;
+    },
   },
 });
 
@@ -119,6 +126,7 @@ export const {
   resetQuiz,
   disconnect,
   setAdminData,
+  setAdminPassword,
 } = quizSlice.actions;
 
 export default quizSlice.reducer;

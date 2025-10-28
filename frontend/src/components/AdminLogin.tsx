@@ -8,9 +8,10 @@ interface AdminLoginProps {
   error: string | null;
   room: any;
   user: any;
+  adminPassword: string | null;
 }
 
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, authenticateAdmin, error, room, user }) => {
+export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, authenticateAdmin, error, room, user, adminPassword }) => {
   console.log('🔄 [AdminLogin] AdminLogin component render started');
   
   const [isCreating, setIsCreating] = useState(false);
@@ -28,13 +29,14 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
 
   // Watch for successful room creation
   useEffect(() => {
-    if (room && isCreating) {
-      console.log('🏠 [AdminLogin] Room created successfully, calling onSuccess');
+    if (room && adminPassword && isCreating) {
+      console.log('🏠 [AdminLogin] Room created successfully with password');
       console.log('🏠 [AdminLogin] Room data:', room);
+      console.log('🔑 [AdminLogin] Admin password:', adminPassword);
       setIsCreating(false); // Reset loading state
-      onSuccess();
+      // Don't call onSuccess immediately, show password first
     }
-  }, [room, onSuccess, isCreating]);
+  }, [room, adminPassword, isCreating]);
 
   // Watch for errors during room creation
   useEffect(() => {
@@ -62,6 +64,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
     createRoom(adminName, adminEmail);
     console.log('🏠 [AdminLogin] createRoom() completed');
     // Don't call onSuccess here - wait for server response
+  };
+
+  const handleContinueToAdmin = () => {
+    console.log('🏠 [AdminLogin] Continuing to admin panel');
+    onSuccess();
   };
 
   const handleJoinAsAdmin = () => {
@@ -148,13 +155,44 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
           )}
 
           {/* Creating Room Status */}
-          {isCreating && (
+          {isCreating && !room && (
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">Создание квиза...</p>
               <p className="text-sm text-gray-500 mt-2">
                 Организатор: {adminName}
               </p>
+            </div>
+          )}
+
+          {/* Room Created Successfully */}
+          {room && adminPassword && (
+            <div className="text-center">
+              <div className="mb-6 p-6 bg-green-50 border border-green-200 rounded-lg">
+                <div className="text-green-600 text-2xl mb-2">✅</div>
+                <h3 className="text-lg font-semibold text-green-800 mb-2">
+                  Квиз создан успешно!
+                </h3>
+                <p className="text-green-700 mb-4">
+                  Код комнаты: <span className="font-mono font-bold text-lg">{room.code}</span>
+                </p>
+                <div className="bg-white p-4 rounded-lg border border-green-300">
+                  <p className="text-sm text-gray-600 mb-2">Пароль администратора:</p>
+                  <p className="text-2xl font-mono font-bold text-gray-900 bg-gray-100 px-4 py-2 rounded">
+                    {adminPassword}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  Сохраните этот пароль для входа в комнату как администратор
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleContinueToAdmin}
+                className="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+              >
+                Перейти к управлению квизом
+              </button>
             </div>
           )}
 

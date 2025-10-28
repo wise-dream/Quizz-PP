@@ -12,7 +12,7 @@ export const App: React.FC = () => {
   console.log('🔄 [App] App component render started');
   
   const [mode, setMode] = useState<AppMode>('select');
-  const { connect, isConnected, user, createRoom, joinRoom, authenticateAdmin, error, room, leaveRoom } = useQuiz();
+  const { connect, isConnected, user, createRoom, joinRoom, authenticateAdmin, error, room, leaveRoom, adminPassword } = useQuiz();
   const hasConnectedRef = useRef(false);
   
   console.log('🔄 [App] Current mode:', mode);
@@ -151,7 +151,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (mode === 'admin-login') return <AdminLogin onSuccess={handleAdminSuccess} createRoom={createRoom} authenticateAdmin={authenticateAdmin} error={error} room={room} user={user} />;
+  if (mode === 'admin-login') return <AdminLogin onSuccess={handleAdminSuccess} createRoom={createRoom} authenticateAdmin={authenticateAdmin} error={error} room={room} user={user} adminPassword={adminPassword} />;
   if (mode === 'participant-login') return <ParticipantLogin onSuccess={handleParticipantSuccess} joinRoom={joinRoom} error={error} room={room} user={user} />;
   if (mode === 'websocket-test') return <WebSocketTest />;
 
