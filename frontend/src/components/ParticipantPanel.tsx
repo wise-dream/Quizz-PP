@@ -251,6 +251,8 @@ export const ParticipantPanel: React.FC = () => {
                       'w-32 h-32 rounded-full font-bold text-2xl transition-all transform',
                       room.phase === 'active' && room?.questionActive
                         ? 'bg-red-600 hover:bg-red-700 text-white hover:scale-105'
+                        : room.phase === 'started'
+                        ? 'bg-yellow-500 text-white cursor-not-allowed'
                         : 'bg-gray-400 text-gray-200 cursor-not-allowed',
                       'focus:outline-none focus:ring-4 focus:ring-red-300',
                       'active:scale-95',
@@ -262,7 +264,7 @@ export const ParticipantPanel: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-2">
                     {room.phase === 'started' 
                       ? 'Ожидайте активации кнопки' 
-                      : room?.questionActive 
+                      : room.phase === 'active' && room?.questionActive 
                         ? 'Нажмите для ответа' 
                         : 'Кнопка заблокирована'
                     }

@@ -164,11 +164,6 @@
   <div class="quiz-controls">
     <h3>🎯 Управление квизом</h3>
     <div class="row">
-      <label>Таймер (сек):</label>
-      <input id="timer" type="number" value="30" min="0" max="300" class="timer-input">
-      <span class="note">0 = без задержки</span>
-    </div>
-    <div class="row">
       <button id="activate-question" class="activate">🔴 Активировать кнопку</button>
       <button id="activate-players" class="activate">🟢 Активировать кнопку</button>
       <button id="deactivate-question" class="deactivate">⏹️ Деактивировать кнопку</button>
@@ -251,7 +246,6 @@
   const $enableTime = document.getElementById('enable-time');
   const $playersList = document.getElementById('players-list');
   const $playersContent = document.getElementById('players-content');
-  const $timer = document.getElementById('timer');
   const $activateBtn = document.getElementById('activate-question');
   const $activatePlayersBtn = document.getElementById('activate-players');
   const $deactivateBtn = document.getElementById('deactivate-question');
@@ -654,9 +648,8 @@
 
   // Кнопки «Активировать/Деактивировать» — только WS
   $activateBtn.onclick = () => {
-    const duration = Math.max(0, parseInt($timer.value || '0', 10));
     // Переход в 'started' с задержкой => автоматически в 'active'
-    sendHostSetState('started', duration * 1000);
+    sendHostSetState('started', 0);
   };
 
   $activatePlayersBtn.onclick = () => {

@@ -393,20 +393,32 @@ export const useQuiz = () => {
   }, [sendEvent, state.user]);
 
   const createTeam = useCallback((teamName: string, teamColor: string) => {
+    if (!state.room) {
+      console.error('No room available for createTeam');
+      return;
+    }
+    
     sendEvent({
       type: 'create_team',
+      quizId: state.room.code,
       teamName,
       teamColor,
     });
-  }, [sendEvent]);
+  }, [sendEvent, state.room]);
 
   const setGamePhase = useCallback((phase: string, delayMs?: number) => {
+    if (!state.room) {
+      console.error('No room available for setGamePhase');
+      return;
+    }
+    
     sendEvent({
       type: 'host_set_state',
+      quizId: state.room.code,
       phase: phase as any,
       delayMs,
     });
-  }, [sendEvent]);
+  }, [sendEvent, state.room]);
 
   const sendClick = useCallback((buttonId: string) => {
     if (!state.user) return;
