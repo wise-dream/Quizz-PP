@@ -4,10 +4,13 @@ import { cn } from '../utils';
 
 interface ParticipantLoginProps {
   onSuccess: () => void;
+  joinRoom: (roomCode: string, nickname: string) => void;
+  error: string | null;
+  room: any;
+  user: any;
 }
 
-export const ParticipantLogin: React.FC<ParticipantLoginProps> = ({ onSuccess }) => {
-  const { joinRoom, error, room, user } = useQuiz();
+export const ParticipantLogin: React.FC<ParticipantLoginProps> = ({ onSuccess, joinRoom, error, room, user }) => {
   const [roomCode, setRoomCode] = useState('');
   const [nickname, setNickname] = useState('');
 

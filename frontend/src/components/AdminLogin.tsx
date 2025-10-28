@@ -4,12 +4,16 @@ import { cn } from '../utils';
 
 interface AdminLoginProps {
   onSuccess: () => void;
+  createRoom: () => void;
+  authenticateAdmin: (roomCode: string, password: string) => void;
+  error: string | null;
+  room: any;
+  user: any;
 }
 
-export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
+export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, authenticateAdmin, error, room, user }) => {
   console.log('🔄 [AdminLogin] AdminLogin component render started');
   
-  const { createRoom, authenticateAdmin, error, room, user } = useQuiz();
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [password, setPassword] = useState('');
