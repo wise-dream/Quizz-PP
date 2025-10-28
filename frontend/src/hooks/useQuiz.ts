@@ -47,6 +47,14 @@ export const useQuiz = () => {
               return {
                 ...prev,
                 room: room,
+                // If we don't have a user yet, create an admin user
+                user: prev.user || {
+                  id: `admin_${Date.now()}`,
+                  nickname: 'Admin',
+                  role: 'admin',
+                  roomCode: room.code
+                },
+                isAdmin: true,
                 error: null,
               };
             });

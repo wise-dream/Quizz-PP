@@ -24,11 +24,12 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
 
   // Watch for successful room creation
   useEffect(() => {
-    if (room && user?.role === 'admin' && !isCreating) {
-      console.log('Room created successfully, calling onSuccess');
+    if (room && !isCreating) {
+      console.log('🏠 [AdminLogin] Room created successfully, calling onSuccess');
+      console.log('🏠 [AdminLogin] Room data:', room);
       onSuccess();
     }
-  }, [room, user, onSuccess, isCreating]);
+  }, [room, onSuccess, isCreating]);
 
   const handleCreateRoom = async () => {
     console.log('🏠 [AdminLogin] handleCreateRoom() called');
