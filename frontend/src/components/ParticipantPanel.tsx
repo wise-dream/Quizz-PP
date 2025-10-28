@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
-import { Users, Zap, Trophy, Clock } from 'lucide-react';
+import { Users, Zap, Trophy, Clock, LogOut } from 'lucide-react';
 
 export const ParticipantPanel: React.FC = () => {
-  const { room, user, joinTeam, sendClick, error, isConnected } = useQuiz();
+  const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
 
   if (!room || !user) return null;
@@ -58,10 +58,20 @@ export const ParticipantPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <div className={cn('px-3 py-1 rounded-full text-sm font-medium', phaseStatus.bg, phaseStatus.color)}>
-                {phaseStatus.text}
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className={cn('px-3 py-1 rounded-full text-sm font-medium', phaseStatus.bg, phaseStatus.color)}>
+                  {phaseStatus.text}
+                </div>
               </div>
+              <button
+                onClick={leaveRoom}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                title="Выйти из комнаты"
+              >
+                <LogOut className="w-4 h-4" />
+                Выйти
+              </button>
             </div>
           </div>
         </div>

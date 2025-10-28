@@ -12,7 +12,7 @@ export const App: React.FC = () => {
   console.log('🔄 [App] App component render started');
   
   const [mode, setMode] = useState<AppMode>('select');
-  const { connect, isConnected, user, createRoom, joinRoom, authenticateAdmin, error, room } = useQuiz();
+  const { connect, isConnected, user, createRoom, joinRoom, authenticateAdmin, error, room, leaveRoom } = useQuiz();
   
   console.log('🔄 [App] Current mode:', mode);
   console.log('🔄 [App] Current isConnected:', isConnected);
@@ -74,6 +74,10 @@ export const App: React.FC = () => {
         console.log('🔄 [App] Auto-navigating to participant panel');
         setMode('participant-panel');
       }
+    } else if (!user && !room && mode !== 'select') {
+      // If user and room are cleared (after leaving), return to select mode
+      console.log('🔄 [App] User left room, returning to select mode');
+      setMode('select');
     }
   }, [user, room, isConnected, mode]);
 

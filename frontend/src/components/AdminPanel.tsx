@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { teamColors, getTeamColor, cn } from '../utils';
-import { Plus, Users, Play, Pause, Square, Settings } from 'lucide-react';
+import { Plus, Users, Play, Pause, Square, Settings, LogOut } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
-  const { room, user, createTeam, setGamePhase, error, isConnected } = useQuiz();
+  const { room, user, createTeam, setGamePhase, error, isConnected, leaveRoom } = useQuiz();
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(teamColors[0].value);
@@ -75,11 +75,21 @@ export const AdminPanel: React.FC = () => {
                 </span>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">Участников</p>
-              <p className="text-2xl font-bold text-green-600">
-                {Object.keys(room.players).length}
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Участников</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {Object.keys(room.players).length}
+                </p>
+              </div>
+              <button
+                onClick={leaveRoom}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                title="Выйти из комнаты"
+              >
+                <LogOut className="w-4 h-4" />
+                Выйти
+              </button>
             </div>
           </div>
         </div>

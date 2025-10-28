@@ -10,6 +10,7 @@ import {
   setError,
   disconnect,
   setAdminData,
+  resetQuiz,
 } from '../store/quizSlice';
 
 export const useQuiz = () => {
@@ -346,6 +347,29 @@ export const useQuiz = () => {
     });
   }, [sendEvent, state.user]);
 
+  const leaveRoom = useCallback(() => {
+    console.log('🚪 [useQuiz] leaveRoom() called');
+    
+    if (!state.user) {
+      console.log('⚠️ [useQuiz] No user to leave room');
+      return;
+    }
+
+    console.log('🚪 [useQuiz] Sending leave event for user:', state.user.id);
+    
+    // Send leave event to server
+    sendEvent({
+      type: 'leave',
+      userId: state.user.id,
+      roomCode: state.user.roomCode,
+    });
+
+    // Clear local state and localStorage
+    dispatch(resetQuiz());
+    
+    console.log('✅ [useQuiz] Left room successfully');
+  }, [sendEvent, state.user, dispatch]);
+
   useEffect(() => {
     return () => {
       disconnectWebSocket();
@@ -363,5 +387,6 @@ export const useQuiz = () => {
     createTeam,
     setGamePhase,
     sendClick,
+    leaveRoom,
   };
 };
