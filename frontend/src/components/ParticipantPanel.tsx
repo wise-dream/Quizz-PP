@@ -275,7 +275,9 @@ export const ParticipantPanel: React.FC = () => {
                 {room?.firstAnswerer && (
                   <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
-                      Первый ответ получен от: <span className="font-semibold">{room.firstAnswerer}</span>
+                      Первый ответ получен от: <span className="font-semibold">
+                        {room.players?.[room.firstAnswerer]?.name || room.firstAnswerer}
+                      </span>
                     </p>
                   </div>
                 )}

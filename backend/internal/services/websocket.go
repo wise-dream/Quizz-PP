@@ -271,6 +271,13 @@ func (ws *WebSocketService) handleClick(client *models.Client, room *models.Room
 	if (room.Phase != models.PhaseStarted && room.Phase != models.PhaseActive) || clickTime.Before(room.EnableAt) {
 		player.FalseStarts++
 		log.Printf("False start by player %s (phase: %s)", event.UserID, room.Phase)
+	} else if room.Phase == models.PhaseActive && room.QuestionActive {
+		// This is a valid answer - set first answerer and deactivate question
+		if room.FirstAnswerer == "" {
+			room.FirstAnswerer = event.UserID
+			room.QuestionActive = false // Deactivate question after first answer
+			log.Printf("First answer received from player %s", event.UserID)
+		}
 	}
 
 	log.Printf("Player %s clicked (total: %d, false starts: %d)",

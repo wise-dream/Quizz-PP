@@ -236,6 +236,7 @@
   let currentRoomCode = '';
   let currentAdminPassword = '';
   let selectedTeamColor = '#dc3545'; // Default to red
+  let currentRoomState = null; // Store current room state for player lookup
   
   // UI Elements
   const $room = document.getElementById('room');
@@ -489,6 +490,7 @@
   }
 
   function updatePhaseInfo(state) {
+    currentRoomState = state; // Store state for player lookup
     $currentPhase.textContent = state.phase || 'lobby';
     if (state.enableAt) {
       const enableDate = new Date(state.enableAt);
@@ -614,7 +616,16 @@
   }
 
   function showAnswerModal(answerData) {
-    $firstAnswerer.textContent = answerData.playerName || answerData.userId || 'Неизвестно';
+    // Find player name by userId from current room state
+    let playerName = 'Неизвестно';
+    if (currentRoomState && currentRoomState.players && answerData.userId) {
+      const player = currentRoomState.players[answerData.userId];
+      if (player) {
+        playerName = player.name || answerData.userId;
+      }
+    }
+    
+    $firstAnswerer.textContent = playerName;
     $playerAnswer.textContent = answerData.answer || 'Нет ответа';
     $pointsInput.value = 10; // Значение по умолчанию
     $answerModal.style.display = 'block';
