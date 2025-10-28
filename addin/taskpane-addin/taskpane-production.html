@@ -49,8 +49,8 @@
     </div>
     <div class="row">
       <button id="activate-question" class="activate">🔴 Активировать кнопку</button>
-      <button id="activate-players" class="activate">🟢 Активировать игроков</button>
-      <button id="deactivate-question" class="deactivate">🔴 Деактивировать кнопку</button>
+      <button id="activate-players" class="activate">🟢 Активировать кнопку</button>
+      <button id="deactivate-question" class="deactivate">⏹️ Деактивировать кнопку</button>
     </div>
   </div>
 
@@ -72,6 +72,24 @@
     <div id="players-content"></div>
   </div>
 
+  <!-- Модалка для подтверждения ответа -->
+  <div id="answer-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;min-width:300px">
+      <h3 style="margin:0 0 15px 0">Подтверждение ответа</h3>
+      <p><strong>Первый ответ:</strong> <span id="first-answerer">—</span></p>
+      <p><strong>Ответ:</strong> <span id="player-answer">—</span></p>
+      <div style="margin:15px 0">
+        <label>Количество очков:</label>
+        <input id="points-input" type="number" value="10" min="0" max="100" style="width:80px;margin-left:10px">
+      </div>
+      <div style="text-align:right;margin-top:20px">
+        <button id="answer-correct" style="background:#28a745;color:white;border:none;padding:8px 16px;margin-right:10px;border-radius:4px">Правильно</button>
+        <button id="answer-wrong" style="background:#dc3545;color:white;border:none;padding:8px 16px;margin-right:10px;border-radius:4px">Неправильно</button>
+        <button id="answer-cancel" style="background:#6c757d;color:white;border:none;padding:8px 16px;border-radius:4px">Отмена</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
   let ws;
@@ -86,6 +104,15 @@
   const $activateBtn = document.getElementById('activate-question');
   const $activatePlayersBtn = document.getElementById('activate-players');
   const $deactivateBtn = document.getElementById('deactivate-question');
+  
+  // Элементы модалки
+  const $answerModal = document.getElementById('answer-modal');
+  const $firstAnswerer = document.getElementById('first-answerer');
+  const $playerAnswer = document.getElementById('player-answer');
+  const $pointsInput = document.getElementById('points-input');
+  const $answerCorrect = document.getElementById('answer-correct');
+  const $answerWrong = document.getElementById('answer-wrong');
+  const $answerCancel = document.getElementById('answer-cancel');
 
   function updateStatus(text, className) {
     $status.textContent = text;
@@ -104,6 +131,9 @@
       if (msg.type === 'state') {
         updatePhaseInfo(msg.data);
         updatePlayersList(msg.data);
+      } else if (msg.type === 'answer_received') {
+        // Показать модалку с ответом игрока
+        showAnswerModal(msg.data);
       }
     };
   }
@@ -134,32 +164,42 @@
     const phase = state.phase || 'lobby';
     
     // Обновляем состояние кнопок в зависимости от фазы
-    if (phase === 'ready') {
+    if (phase === 'lobby') {
+      // В лобби - показываем кнопку начала игры
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Начать игру';
+    } else if (phase === 'ready') {
+      // Готовность - показываем кнопку активации кнопки
       $activateBtn.style.display = 'none';
       $activatePlayersBtn.style.display = 'inline-block';
       $deactivateBtn.style.display = 'none';
-      $activatePlayersBtn.textContent = '🟢 Активировать игроков';
+      $activatePlayersBtn.textContent = '🟢 Активировать кнопку';
     } else if (phase === 'started') {
+      // Игра началась - показываем кнопку активации кнопки
       $activateBtn.style.display = 'none';
       $activatePlayersBtn.style.display = 'inline-block';
       $deactivateBtn.style.display = 'none';
-      $activatePlayersBtn.textContent = '🟢 Активировать игроков';
+      $activatePlayersBtn.textContent = '🟢 Активировать кнопку';
     } else if (phase === 'active') {
+      // Кнопка активна - показываем кнопку деактивации
       $activateBtn.style.display = 'none';
       $activatePlayersBtn.style.display = 'none';
       $deactivateBtn.style.display = 'inline-block';
-      $deactivateBtn.textContent = '🔴 Деактивировать кнопку';
+      $deactivateBtn.textContent = '⏹️ Деактивировать кнопку';
     } else if (phase === 'finished') {
+      // Игра завершена - показываем кнопку начала новой игры
       $activateBtn.style.display = 'inline-block';
       $activatePlayersBtn.style.display = 'none';
       $deactivateBtn.style.display = 'none';
-      $activateBtn.textContent = '🔴 Активировать кнопку';
+      $activateBtn.textContent = '🔴 Начать новую игру';
     } else {
-      // lobby или другие фазы
+      // Fallback
       $activateBtn.style.display = 'inline-block';
       $activatePlayersBtn.style.display = 'none';
       $deactivateBtn.style.display = 'none';
-      $activateBtn.textContent = '🔴 Активировать кнопку';
+      $activateBtn.textContent = '🔴 Начать игру';
     }
   }
 
@@ -180,12 +220,34 @@
     }
   }
 
+  function showAnswerModal(answerData) {
+    $firstAnswerer.textContent = answerData.playerName || answerData.userId || 'Неизвестно';
+    $playerAnswer.textContent = answerData.answer || 'Нет ответа';
+    $pointsInput.value = 10; // Значение по умолчанию
+    $answerModal.style.display = 'block';
+  }
+
+  function hideAnswerModal() {
+    $answerModal.style.display = 'none';
+  }
+
+  function sendAnswerConfirmation(isCorrect, points) {
+    if (!ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({
+      type: 'answer_confirmation',
+      quizId: $room.value.trim(),
+      isCorrect: isCorrect,
+      points: points
+    }));
+    hideAnswerModal();
+  }
+
   document.getElementById('connect').onclick = openWs;
 
   // Кнопки «Активировать/Деактивировать» — только WS
   $activateBtn.onclick = () => {
     const duration = Math.max(0, parseInt($timer.value || '0', 10));
-    // 'ready' с задержкой => блок до enableAt, потом «поехали»
+    // Переход в 'ready' с задержкой => автоматически в 'started'
     sendHostSetState('ready', duration * 1000);
   };
 
@@ -195,8 +257,8 @@
   };
 
   $deactivateBtn.onclick = () => {
-    // «finish» — закрыть окно ответов
-    sendHostSetState('finished');
+    // Деактивация кнопки - возврат в 'started'
+    sendHostSetState('started');
   };
 
   // Горячие WS-кнопки
@@ -210,6 +272,20 @@
     else if (act === 'finish') sendHostSetState('finished');
     else if (act === 'reset')  sendHostSetState('lobby');
   });
+
+  // Обработчики модалки
+  $answerCorrect.onclick = () => {
+    const points = parseInt($pointsInput.value) || 0;
+    sendAnswerConfirmation(true, points);
+  };
+
+  $answerWrong.onclick = () => {
+    sendAnswerConfirmation(false, 0);
+  };
+
+  $answerCancel.onclick = () => {
+    hideAnswerModal();
+  };
 
   Office.onReady(() => {
     // Инициализируем состояние кнопок при загрузке

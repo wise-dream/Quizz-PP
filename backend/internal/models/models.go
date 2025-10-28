@@ -44,10 +44,11 @@ const (
 	EventTeamJoined            EventType = "team_joined"
 	EventPhaseChanged          EventType = "phase_changed"
 	// Quiz management events
-	EventStartQuestion  EventType = "start_question"
-	EventAnswerReceived EventType = "answer_received"
-	EventShowAnswer     EventType = "show_answer"
-	EventNextQuestion   EventType = "next_question"
+	EventStartQuestion      EventType = "start_question"
+	EventAnswerReceived     EventType = "answer_received"
+	EventAnswerConfirmation EventType = "answer_confirmation"
+	EventShowAnswer         EventType = "show_answer"
+	EventNextQuestion       EventType = "next_question"
 )
 
 // Player represents a quiz participant
@@ -117,6 +118,8 @@ type Event struct {
 	Answer        string `json:"answer,omitempty"`        // The answer given by player
 	CorrectAnswer string `json:"correctAnswer,omitempty"` // The correct answer
 	IsCorrect     bool   `json:"isCorrect,omitempty"`     // Whether the answer is correct
+	Points        int    `json:"points,omitempty"`        // Points awarded for the answer
+	PlayerName    string `json:"playerName,omitempty"`    // Name of the player who answered
 }
 
 // Client represents a WebSocket connection

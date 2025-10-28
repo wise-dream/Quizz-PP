@@ -169,6 +169,13 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 			room.Mu.Unlock()
 		}
 
+	case models.EventAnswerConfirmation:
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleAnswerConfirmation(client, room, event)
+			room.Mu.Unlock()
+		}
+
 	case models.EventShowAnswer:
 		if room != nil {
 			room.Mu.Lock()
@@ -696,6 +703,70 @@ func (ws *WebSocketService) handleAnswerReceived(client *models.Client, room *mo
 		Answer: event.Answer,
 	}
 	ws.broadcastToRoom(room, answerEvent)
+
+	ws.broadcastRoomState(room)
+}
+
+// handleAnswerConfirmation processes answer confirmation events
+func (ws *WebSocketService) handleAnswerConfirmation(client *models.Client, room *models.Room, event models.Event) {
+	// Check if user is admin/host
+	if client.Role != "admin" && client.Role != "host" {
+		log.Printf("Non-admin client attempted to confirm answer, role: %s", client.Role)
+		return
+	}
+
+	// Check if there's a first answerer
+	if room.FirstAnswerer == "" {
+		log.Printf("No first answerer to confirm")
+		return
+	}
+
+	// Get player info
+	player, exists := room.Players[room.FirstAnswerer]
+	if !exists {
+		log.Printf("First answerer player not found: %s", room.FirstAnswerer)
+		return
+	}
+
+	// Get player's team
+	var playerTeam *models.Team
+	for _, team := range room.Teams {
+		for _, playerID := range team.Players {
+			if playerID == room.FirstAnswerer {
+				playerTeam = team
+				break
+			}
+		}
+		if playerTeam != nil {
+			break
+		}
+	}
+
+	// Award points if correct
+	if event.IsCorrect && playerTeam != nil {
+		points := event.Points
+		if points <= 0 {
+			points = 10 // Default points
+		}
+		playerTeam.Score += points
+		log.Printf("Awarded %d points to team %s for correct answer", points, playerTeam.Name)
+	}
+
+	// Reset question state
+	room.QuestionActive = false
+	room.FirstAnswerer = ""
+
+	log.Printf("Answer confirmed: correct=%v, points=%d", event.IsCorrect, event.Points)
+
+	// Broadcast confirmation event
+	confirmationEvent := models.Event{
+		Type:          models.EventAnswerConfirmation,
+		IsCorrect:     event.IsCorrect,
+		Points:        event.Points,
+		PlayerName:    player.Name,
+		CorrectAnswer: event.CorrectAnswer,
+	}
+	ws.broadcastToRoom(room, confirmationEvent)
 
 	ws.broadcastRoomState(room)
 }
