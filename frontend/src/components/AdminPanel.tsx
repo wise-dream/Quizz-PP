@@ -9,29 +9,7 @@ export const AdminPanel: React.FC = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(teamColors[0].value);
 
-  console.log('🔄 [AdminPanel] AdminPanel render started');
-  console.log('🔄 [AdminPanel] Current room:', room);
-  console.log('🔄 [AdminPanel] Current user:', user);
-  console.log('🔄 [AdminPanel] Current error:', error);
-
-  if (!room || !user) {
-    console.log('❌ [AdminPanel] Missing room or user data, returning null');
-    console.log('❌ [AdminPanel] Room:', room);
-    console.log('❌ [AdminPanel] User:', user);
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Загрузка админ-панели...</p>
-          <p className="text-sm text-gray-500 mt-2">
-            {!room && 'Ожидание данных комнаты...'}
-            {!user && 'Ожидание данных пользователя...'}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
+  // All hooks must be called before any conditional returns
   const handleCreateTeam = useCallback(() => {
     if (!newTeamName.trim()) return;
     
@@ -69,6 +47,7 @@ export const AdminPanel: React.FC = () => {
 
   // Memoize team list to prevent unnecessary re-renders
   const teamList = useMemo(() => {
+    if (!room?.teams) return [];
     return Object.values(room.teams).map((team) => {
       const color = getTeamColor(team.color);
       return (
@@ -95,10 +74,11 @@ export const AdminPanel: React.FC = () => {
         </div>
       );
     });
-  }, [room.teams]);
+  }, [room?.teams]);
 
   // Memoize player list
   const playerList = useMemo(() => {
+    if (!room?.players || !room?.teams) return [];
     return Object.values(room.players).map((player) => {
       const playerTeam = Object.values(room.teams).find(team => 
         team.players.includes(player.userId)
@@ -129,7 +109,30 @@ export const AdminPanel: React.FC = () => {
         </div>
       );
     });
-  }, [room.players, room.teams]);
+  }, [room?.players, room?.teams]);
+
+  console.log('🔄 [AdminPanel] AdminPanel render started');
+  console.log('🔄 [AdminPanel] Current room:', room);
+  console.log('🔄 [AdminPanel] Current user:', user);
+  console.log('🔄 [AdminPanel] Current error:', error);
+
+  if (!room || !user) {
+    console.log('❌ [AdminPanel] Missing room or user data, returning null');
+    console.log('❌ [AdminPanel] Room:', room);
+    console.log('❌ [AdminPanel] User:', user);
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка админ-панели...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {!room && 'Ожидание данных комнаты...'}
+            {!user && 'Ожидание данных пользователя...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

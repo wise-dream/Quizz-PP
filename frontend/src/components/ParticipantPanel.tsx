@@ -7,8 +7,7 @@ export const ParticipantPanel: React.FC = () => {
   const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
 
-  if (!room || !user) return null;
-
+  // All hooks must be called before any conditional returns
   const handleJoinTeam = useCallback((teamId: string) => {
     joinTeam(teamId);
     setSelectedTeam(teamId);
@@ -19,6 +18,7 @@ export const ParticipantPanel: React.FC = () => {
   }, [sendClick]);
 
   const getPhaseStatus = useCallback(() => {
+    if (!room?.phase) return { text: 'Неизвестно', color: 'text-gray-600', bg: 'bg-gray-100' };
     switch (room.phase) {
       case 'lobby':
         return { text: 'Ожидание начала', color: 'text-gray-600', bg: 'bg-gray-100' };
@@ -31,16 +31,17 @@ export const ParticipantPanel: React.FC = () => {
       default:
         return { text: 'Неизвестно', color: 'text-gray-600', bg: 'bg-gray-100' };
     }
-  }, [room.phase]);
+  }, [room?.phase]);
 
   const phaseStatus = getPhaseStatus();
   const playerTeam = useMemo(() => 
-    Object.values(room.teams).find(team => team.players.includes(user.id)),
-    [room.teams, user.id]
+    room?.teams ? Object.values(room.teams).find(team => team.players.includes(user?.id || '')) : null,
+    [room?.teams, user?.id]
   );
 
   // Memoize team list
   const teamList = useMemo(() => {
+    if (!room?.teams) return [];
     return Object.values(room.teams).map((team) => {
       const color = getTeamColor(team.color);
       return (
@@ -65,10 +66,11 @@ export const ParticipantPanel: React.FC = () => {
         </button>
       );
     });
-  }, [room.teams, handleJoinTeam]);
+  }, [room?.teams, handleJoinTeam]);
 
   // Memoize leaderboard
   const leaderboard = useMemo(() => {
+    if (!room?.teams || !user?.id) return [];
     return Object.values(room.teams)
       .sort((a, b) => b.score - a.score)
       .map((team, index) => {
@@ -108,7 +110,9 @@ export const ParticipantPanel: React.FC = () => {
           </div>
         );
       });
-  }, [room.teams, user.id]);
+  }, [room?.teams, user?.id]);
+
+  if (!room || !user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
