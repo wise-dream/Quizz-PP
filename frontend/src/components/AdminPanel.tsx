@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { teamColors, getTeamColor, cn } from '../utils';
 import { Plus, Users, Play, Pause, Square, Settings, LogOut } from 'lucide-react';
@@ -32,15 +32,27 @@ export const AdminPanel: React.FC = () => {
     );
   }
 
-  const handleCreateTeam = () => {
+  const handleCreateTeam = useCallback(() => {
     if (!newTeamName.trim()) return;
     
     createTeam(newTeamName, newTeamColor);
     setNewTeamName('');
     setShowCreateTeam(false);
-  };
+  }, [newTeamName, newTeamColor, createTeam]);
 
-  const getPhaseButton = (phase: string, label: string, icon: React.ReactNode, color: string) => (
+  const toggleCreateTeam = useCallback(() => {
+    setShowCreateTeam(prev => !prev);
+  }, []);
+
+  const handleTeamNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewTeamName(e.target.value);
+  }, []);
+
+  const handleTeamColorChange = useCallback((color: string) => {
+    setNewTeamColor(color);
+  }, []);
+
+  const getPhaseButton = useCallback((phase: string, label: string, icon: React.ReactNode, color: string) => (
     <button
       onClick={() => setGamePhase(phase)}
       className={cn(
@@ -53,7 +65,71 @@ export const AdminPanel: React.FC = () => {
       {icon}
       {label}
     </button>
-  );
+  ), [setGamePhase]);
+
+  // Memoize team list to prevent unnecessary re-renders
+  const teamList = useMemo(() => {
+    return Object.values(room.teams).map((team) => {
+      const color = getTeamColor(team.color);
+      return (
+        <div
+          key={team.id}
+          className="p-3 border border-gray-200 rounded-lg"
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="w-4 h-4 rounded-full"
+              style={{ backgroundColor: team.color }}
+            />
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900">{team.name}</h3>
+              <p className="text-sm text-gray-500">
+                {team.players.length} участников
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-bold text-gray-900">{team.score}</p>
+              <p className="text-xs text-gray-500">очков</p>
+            </div>
+          </div>
+        </div>
+      );
+    });
+  }, [room.teams]);
+
+  // Memoize player list
+  const playerList = useMemo(() => {
+    return Object.values(room.players).map((player) => {
+      const playerTeam = Object.values(room.teams).find(team => 
+        team.players.includes(player.userId)
+      );
+      const teamColor = playerTeam ? getTeamColor(playerTeam.color) : null;
+      
+      return (
+        <div
+          key={player.userId}
+          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+        >
+          <div className="flex-1">
+            <p className="font-medium text-gray-900">{player.name}</p>
+            {playerTeam && (
+              <p className="text-sm text-gray-500">{playerTeam.name}</p>
+            )}
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-medium text-gray-900">{player.clickCount}</p>
+            <p className="text-xs text-gray-500">кликов</p>
+          </div>
+          {teamColor && (
+            <div
+              className="w-3 h-3 rounded-full"
+              style={{ backgroundColor: teamColor.value }}
+            />
+          )}
+        </div>
+      );
+    });
+  }, [room.players, room.teams]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -128,7 +204,7 @@ export const AdminPanel: React.FC = () => {
                 Команды
               </h2>
               <button
-                onClick={() => setShowCreateTeam(!showCreateTeam)}
+                onClick={toggleCreateTeam}
                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               >
                 <Plus className="w-5 h-5" />
@@ -141,7 +217,7 @@ export const AdminPanel: React.FC = () => {
                   <input
                     type="text"
                     value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)}
+                    onChange={handleTeamNameChange}
                     placeholder="Название команды"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -149,7 +225,7 @@ export const AdminPanel: React.FC = () => {
                     {teamColors.map((color) => (
                       <button
                         key={color.value}
-                        onClick={() => setNewTeamColor(color.value)}
+                        onClick={() => handleTeamColorChange(color.value)}
                         className={cn(
                           'w-8 h-8 rounded-full border-2 transition-all',
                           newTeamColor === color.value ? 'border-gray-800' : 'border-gray-300'
@@ -166,7 +242,7 @@ export const AdminPanel: React.FC = () => {
                       Создать
                     </button>
                     <button
-                      onClick={() => setShowCreateTeam(false)}
+                      onClick={toggleCreateTeam}
                       className="flex-1 py-2 px-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
                     >
                       Отмена
@@ -177,32 +253,7 @@ export const AdminPanel: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              {Object.values(room.teams).map((team) => {
-                const color = getTeamColor(team.color);
-                return (
-                  <div
-                    key={team.id}
-                    className="p-3 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: team.color }}
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{team.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {team.players.length} участников
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">{team.score}</p>
-                        <p className="text-xs text-gray-500">очков</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {teamList}
             </div>
           </div>
 
@@ -213,36 +264,7 @@ export const AdminPanel: React.FC = () => {
               Участники
             </h2>
             <div className="space-y-2">
-              {Object.values(room.players).map((player) => {
-                const playerTeam = Object.values(room.teams).find(team => 
-                  team.players.includes(player.userId)
-                );
-                const teamColor = playerTeam ? getTeamColor(playerTeam.color) : null;
-                
-                return (
-                  <div
-                    key={player.userId}
-                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{player.name}</p>
-                      {playerTeam && (
-                        <p className="text-sm text-gray-500">{playerTeam.name}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">{player.clickCount}</p>
-                      <p className="text-xs text-gray-500">кликов</p>
-                    </div>
-                    {teamColor && (
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: teamColor.value }}
-                      />
-                    )}
-                  </div>
-                );
-              })}
+              {playerList}
             </div>
           </div>
         </div>

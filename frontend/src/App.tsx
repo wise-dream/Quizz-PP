@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AdminLogin } from './components/AdminLogin';
 import { ParticipantLogin } from './components/ParticipantLogin';
 import { AdminPanel } from './components/AdminPanel';
@@ -66,30 +66,50 @@ export const App: React.FC = () => {
     console.log('🔄 [App] Current room:', room);
     console.log('🔄 [App] Current mode:', mode);
     
-    if (user && room && isConnected) {
-      if (user.role === 'admin' && mode === 'select') {
+    // Only auto-navigate if we're in select mode and have valid user/room data
+    if (mode === 'select' && user && room && isConnected) {
+      if (user.role === 'admin') {
         console.log('🔄 [App] Auto-navigating to admin panel');
         setMode('admin-panel');
-      } else if (user.role === 'participant' && mode === 'select') {
+      } else if (user.role === 'participant') {
         console.log('🔄 [App] Auto-navigating to participant panel');
         setMode('participant-panel');
       }
-    } else if (!user && !room && mode !== 'select') {
-      // If user and room are cleared (after leaving), return to select mode
+    }
+  }, [user, room, isConnected]);
+
+  // Handle returning to select mode when user leaves
+  useEffect(() => {
+    if (!user && !room && mode !== 'select') {
       console.log('🔄 [App] User left room, returning to select mode');
       setMode('select');
     }
-  }, [user, room, isConnected, mode]);
+  }, [user, room, mode]);
 
-  const handleAdminSuccess = () => {
+  const handleAdminSuccess = useCallback(() => {
     console.log('✅ [App] handleAdminSuccess() called');
     setMode('admin-panel');
-  };
+  }, []);
   
-  const handleParticipantSuccess = () => {
+  const handleParticipantSuccess = useCallback(() => {
     console.log('✅ [App] handleParticipantSuccess() called');
     setMode('participant-panel');
-  };
+  }, []);
+
+  const handleAdminClick = useCallback(() => {
+    console.log('🔵 [App] Admin button clicked');
+    setMode('admin-login');
+  }, []);
+
+  const handleParticipantClick = useCallback(() => {
+    console.log('🟢 [App] Participant button clicked');
+    setMode('participant-login');
+  }, []);
+
+  const handleWebSocketTestClick = useCallback(() => {
+    console.log('🟣 [App] WebSocket test button clicked');
+    setMode('websocket-test');
+  }, []);
 
   if (!isConnected) {
     return (
@@ -127,28 +147,19 @@ export const App: React.FC = () => {
 
         <div className="space-y-4">
           <button
-            onClick={() => {
-              console.log('🔵 [App] Admin button clicked');
-              setMode('admin-login');
-            }}
+            onClick={handleAdminClick}
             className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Я организатор
           </button>
           <button
-            onClick={() => {
-              console.log('🟢 [App] Participant button clicked');
-              setMode('participant-login');
-            }}
+            onClick={handleParticipantClick}
             className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
           >
             Я участник
           </button>
           <button
-            onClick={() => {
-              console.log('🟣 [App] WebSocket test button clicked');
-              setMode('websocket-test');
-            }}
+            onClick={handleWebSocketTestClick}
             className="w-full py-4 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
           >
             🔧 Тест WebSocket

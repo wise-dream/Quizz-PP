@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
 import { Users, Zap, Trophy, Clock, LogOut } from 'lucide-react';
@@ -9,16 +9,16 @@ export const ParticipantPanel: React.FC = () => {
 
   if (!room || !user) return null;
 
-  const handleJoinTeam = (teamId: string) => {
+  const handleJoinTeam = useCallback((teamId: string) => {
     joinTeam(teamId);
     setSelectedTeam(teamId);
-  };
+  }, [joinTeam]);
 
-  const handleClick = (buttonId: string) => {
+  const handleClick = useCallback((buttonId: string) => {
     sendClick(buttonId);
-  };
+  }, [sendClick]);
 
-  const getPhaseStatus = () => {
+  const getPhaseStatus = useCallback(() => {
     switch (room.phase) {
       case 'lobby':
         return { text: 'Ожидание начала', color: 'text-gray-600', bg: 'bg-gray-100' };
@@ -31,12 +31,84 @@ export const ParticipantPanel: React.FC = () => {
       default:
         return { text: 'Неизвестно', color: 'text-gray-600', bg: 'bg-gray-100' };
     }
-  };
+  }, [room.phase]);
 
   const phaseStatus = getPhaseStatus();
-  const playerTeam = Object.values(room.teams).find(team => 
-    team.players.includes(user.id)
+  const playerTeam = useMemo(() => 
+    Object.values(room.teams).find(team => team.players.includes(user.id)),
+    [room.teams, user.id]
   );
+
+  // Memoize team list
+  const teamList = useMemo(() => {
+    return Object.values(room.teams).map((team) => {
+      const color = getTeamColor(team.color);
+      return (
+        <button
+          key={team.id}
+          onClick={() => handleJoinTeam(team.id)}
+          className={cn(
+            'w-full p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors',
+            'flex items-center gap-3 text-left'
+          )}
+        >
+          <div
+            className="w-6 h-6 rounded-full"
+            style={{ backgroundColor: team.color }}
+          />
+          <div className="flex-1">
+            <h3 className="font-medium text-gray-900">{team.name}</h3>
+            <p className="text-sm text-gray-500">
+              {team.players.length} участников • {team.score} очков
+            </p>
+          </div>
+        </button>
+      );
+    });
+  }, [room.teams, handleJoinTeam]);
+
+  // Memoize leaderboard
+  const leaderboard = useMemo(() => {
+    return Object.values(room.teams)
+      .sort((a, b) => b.score - a.score)
+      .map((team, index) => {
+        const color = getTeamColor(team.color);
+        const isPlayerTeam = team.players.includes(user.id);
+        
+        return (
+          <div
+            key={team.id}
+            className={cn(
+              'flex items-center gap-4 p-4 rounded-lg',
+              isPlayerTeam ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
+            )}
+          >
+            <div className="text-2xl font-bold text-gray-400">
+              #{index + 1}
+            </div>
+            <div
+              className="w-8 h-8 rounded-full"
+              style={{ backgroundColor: team.color }}
+            />
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900">{team.name}</h3>
+              <p className="text-sm text-gray-500">
+                {team.players.length} участников
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">{team.score}</p>
+              <p className="text-sm text-gray-500">очков</p>
+            </div>
+            {isPlayerTeam && (
+              <div className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
+                Ваша команда
+              </div>
+            )}
+          </div>
+        );
+      });
+  }, [room.teams, user.id]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -107,30 +179,7 @@ export const ParticipantPanel: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {Object.values(room.teams).map((team) => {
-                  const color = getTeamColor(team.color);
-                  return (
-                    <button
-                      key={team.id}
-                      onClick={() => handleJoinTeam(team.id)}
-                      className={cn(
-                        'w-full p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors',
-                        'flex items-center gap-3 text-left'
-                      )}
-                    >
-                      <div
-                        className="w-6 h-6 rounded-full"
-                        style={{ backgroundColor: team.color }}
-                      />
-                      <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{team.name}</h3>
-                        <p className="text-sm text-gray-500">
-                          {team.players.length} участников • {team.score} очков
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+                {teamList}
               </div>
             )}
           </div>
@@ -185,45 +234,7 @@ export const ParticipantPanel: React.FC = () => {
           </h2>
           
           <div className="space-y-3">
-            {Object.values(room.teams)
-              .sort((a, b) => b.score - a.score)
-              .map((team, index) => {
-                const color = getTeamColor(team.color);
-                const isPlayerTeam = team.players.includes(user.id);
-                
-                return (
-                  <div
-                    key={team.id}
-                    className={cn(
-                      'flex items-center gap-4 p-4 rounded-lg',
-                      isPlayerTeam ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50'
-                    )}
-                  >
-                    <div className="text-2xl font-bold text-gray-400">
-                      #{index + 1}
-                    </div>
-                    <div
-                      className="w-8 h-8 rounded-full"
-                      style={{ backgroundColor: team.color }}
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{team.name}</h3>
-                      <p className="text-sm text-gray-500">
-                        {team.players.length} участников
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-gray-900">{team.score}</p>
-                      <p className="text-sm text-gray-500">очков</p>
-                    </div>
-                    {isPlayerTeam && (
-                      <div className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">
-                        Ваша команда
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+            {leaderboard}
           </div>
         </div>
       </div>
