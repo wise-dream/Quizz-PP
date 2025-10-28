@@ -5,7 +5,6 @@ import { Users, Zap, Trophy, Clock, LogOut, Circle } from 'lucide-react';
 
 export const ParticipantPanel: React.FC = () => {
   const { room, user, joinTeam, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
-  const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
   // Timer effect
@@ -37,12 +36,7 @@ export const ParticipantPanel: React.FC = () => {
   // All hooks must be called before any conditional returns
   const handleJoinTeam = useCallback((teamId: string) => {
     joinTeam(teamId);
-    setSelectedTeam(teamId);
   }, [joinTeam]);
-
-  const handleClick = useCallback((buttonId: string) => {
-    sendClick(buttonId);
-  }, [sendClick]);
 
   const handleAnswer = useCallback((answer: string) => {
     console.log('📝 [ParticipantPanel] Answer sent:', answer);
