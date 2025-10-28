@@ -304,6 +304,7 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 				time.Sleep(time.Duration(event.DelayMs) * time.Millisecond)
 				room.Mu.Lock()
 				room.Phase = models.PhaseActive
+				room.QuestionActive = true // Enable question answering
 				room.Mu.Unlock()
 
 				// Send phase changed event for active phase
@@ -319,6 +320,7 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 		// Direct transition to active phase - players can now click
 		room.Phase = models.PhaseActive
 		room.EnableAt = time.Now()
+		room.QuestionActive = true // Enable question answering
 
 		// Send phase changed event
 		phaseChangedEvent := models.Event{
@@ -328,6 +330,10 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 		ws.broadcastToRoom(room, phaseChangedEvent)
 	} else {
 		room.Phase = event.Phase
+		// Reset question state for non-active phases
+		if event.Phase != models.PhaseActive {
+			room.QuestionActive = false
+		}
 
 		// Send phase changed event
 		phaseChangedEvent := models.Event{

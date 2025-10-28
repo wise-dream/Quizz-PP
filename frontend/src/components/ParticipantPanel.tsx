@@ -246,10 +246,10 @@ export const ParticipantPanel: React.FC = () => {
                 <div className="mb-6 text-center">
                   <button
                     onClick={() => handleAnswer('ANSWER')}
-                    disabled={room.phase !== 'active' || !room?.questionActive}
+                    disabled={room.phase !== 'active'}
                     className={cn(
                       'w-32 h-32 rounded-full font-bold text-2xl transition-all transform',
-                      room.phase === 'active' && room?.questionActive
+                      room.phase === 'active'
                         ? 'bg-red-600 hover:bg-red-700 text-white hover:scale-105'
                         : room.phase === 'started'
                         ? 'bg-yellow-500 text-white cursor-not-allowed'
@@ -264,7 +264,7 @@ export const ParticipantPanel: React.FC = () => {
                   <p className="text-xs text-gray-500 mt-2">
                     {room.phase === 'started' 
                       ? 'Ожидайте активации кнопки' 
-                      : room.phase === 'active' && room?.questionActive 
+                      : room.phase === 'active'
                         ? 'Нажмите для ответа' 
                         : 'Кнопка заблокирована'
                     }
