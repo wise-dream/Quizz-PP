@@ -28,12 +28,22 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
 
   // Watch for successful room creation
   useEffect(() => {
-    if (room && !isCreating) {
+    if (room && isCreating) {
       console.log('🏠 [AdminLogin] Room created successfully, calling onSuccess');
       console.log('🏠 [AdminLogin] Room data:', room);
+      setIsCreating(false); // Reset loading state
       onSuccess();
     }
   }, [room, onSuccess, isCreating]);
+
+  // Watch for errors during room creation
+  useEffect(() => {
+    if (error && isCreating) {
+      console.log('❌ [AdminLogin] Error during room creation:', error);
+      setIsCreating(false); // Reset loading state
+      setShowAdminForm(true); // Show form again
+    }
+  }, [error, isCreating]);
 
   const handleCreateRoom = () => {
     console.log('🏠 [AdminLogin] handleCreateRoom() called');
