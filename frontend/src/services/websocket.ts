@@ -26,7 +26,7 @@ export class WebSocketService {
           console.log('📨 [WebSocket] Message received:', event.data);
           try {
             // Handle multiple JSON messages in one string (separated by newlines)
-            const messages = event.data.split('\n').filter(line => line.trim() !== '');
+            const messages = event.data.split('\n').filter((line: string) => line.trim() !== '');
             
             for (const message of messages) {
               try {
