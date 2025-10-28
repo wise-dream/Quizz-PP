@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useQuiz } from '../hooks/useQuiz';
+import { useQuiz } from '../hooks/useQuizRedux';
 import { cn } from '../utils';
 
 interface AdminLoginProps {
   onSuccess: () => void;
-  createRoom: () => void;
+  createRoom: (adminName?: string, adminEmail?: string) => void;
   authenticateAdmin: (roomCode: string, password: string) => void;
   error: string | null;
   room: any;
@@ -17,6 +17,11 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Admin data form
+  const [adminName, setAdminName] = useState('');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [showAdminForm, setShowAdminForm] = useState(true);
   
   console.log('🔄 [AdminLogin] Current error:', error);
   console.log('🔄 [AdminLogin] Current room:', room);
@@ -33,15 +38,26 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
 
   const handleCreateRoom = async () => {
     console.log('🏠 [AdminLogin] handleCreateRoom() called');
+    console.log('🏠 [AdminLogin] Admin name:', adminName);
+    console.log('🏠 [AdminLogin] Admin email:', adminEmail);
+    
+    if (!adminName.trim()) {
+      console.log('⚠️ [AdminLogin] Admin name is required');
+      return;
+    }
+    
     setIsCreating(true);
+    setShowAdminForm(false);
+    
     try {
       console.log('🏠 [AdminLogin] Calling createRoom...');
-      await createRoom();
+      await createRoom(adminName, adminEmail);
       console.log('🏠 [AdminLogin] createRoom() completed');
       // Don't call onSuccess here - wait for server response
     } catch (err) {
       console.error('❌ [AdminLogin] Failed to create room:', err);
       setIsCreating(false);
+      setShowAdminForm(true);
     }
   };
 
@@ -84,24 +100,63 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
         )}
 
         <div className="space-y-6">
-          {/* Create New Room */}
-          <div className="text-center">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Создать новый квиз
-            </h2>
-            <button
-              onClick={handleCreateRoom}
-              disabled={isCreating}
-              className={cn(
-                'w-full py-3 px-6 rounded-lg font-medium transition-colors',
-                'bg-blue-600 hover:bg-blue-700 text-white',
-                'disabled:bg-gray-400 disabled:cursor-not-allowed',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-              )}
-            >
-              {isCreating ? 'Создание...' : 'Создать квиз'}
-            </button>
-          </div>
+          {/* Admin Data Form */}
+          {showAdminForm && (
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Данные организатора
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ваше имя *
+                  </label>
+                  <input
+                    type="text"
+                    value={adminName}
+                    onChange={(e) => setAdminName(e.target.value)}
+                    placeholder="Введите ваше имя"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Email (необязательно)
+                  </label>
+                  <input
+                    type="email"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <button
+                  onClick={handleCreateRoom}
+                  disabled={!adminName.trim()}
+                  className={cn(
+                    'w-full py-3 px-6 rounded-lg font-medium transition-colors',
+                    'bg-blue-600 hover:bg-blue-700 text-white',
+                    'disabled:bg-gray-400 disabled:cursor-not-allowed',
+                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                  )}
+                >
+                  Создать квиз
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Creating Room Status */}
+          {isCreating && (
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Создание квиза...</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Организатор: {adminName}
+              </p>
+            </div>
+          )}
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">

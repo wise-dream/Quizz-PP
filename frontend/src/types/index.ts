@@ -15,7 +15,10 @@ export type EventType =
   | 'admin_auth'
   | 'room_created'
   | 'join_success'
-  | 'join_error';
+  | 'join_error'
+  | 'admin_reconnect'
+  | 'admin_reconnect_success'
+  | 'admin_reconnect_error';
 
 export interface Player {
   id: string;
@@ -66,6 +69,8 @@ export interface Event {
   teamColor?: string;
   password?: string;
   adminToken?: string;
+  adminName?: string;
+  adminEmail?: string;
 }
 
 export interface WebSocketMessage {

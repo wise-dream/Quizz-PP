@@ -4,7 +4,7 @@ import { ParticipantLogin } from './components/ParticipantLogin';
 import { AdminPanel } from './components/AdminPanel';
 import { ParticipantPanel } from './components/ParticipantPanel';
 import { WebSocketTest } from './components/WebSocketTest';
-import { useQuiz } from './hooks/useQuiz';
+import { useQuiz } from './hooks/useQuizRedux';
 
 type AppMode = 'select' | 'admin-login' | 'participant-login' | 'admin-panel' | 'participant-panel' | 'websocket-test';
 
