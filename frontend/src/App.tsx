@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminLogin } from './components/AdminLogin';
 import { ParticipantLogin } from './components/ParticipantLogin';
 import { AdminPanel } from './components/AdminPanel';
@@ -13,6 +13,7 @@ export const App: React.FC = () => {
   
   const [mode, setMode] = useState<AppMode>('select');
   const { connect, isConnected, user, createRoom, joinRoom, authenticateAdmin, error, room, leaveRoom } = useQuiz();
+  const hasConnectedRef = useRef(false);
   
   console.log('🔄 [App] Current mode:', mode);
   console.log('🔄 [App] Current isConnected:', isConnected);
@@ -21,11 +22,13 @@ export const App: React.FC = () => {
   useEffect(() => {
     console.log('🚀 [App] useEffect - setting up WebSocket connection');
     
-    // Only connect if not already connected
-    if (isConnected) {
-      console.log('⚠️ [App] Already connected, skipping connection');
+    // Only connect once on mount
+    if (hasConnectedRef.current) {
+      console.log('⚠️ [App] Already attempted connection, skipping');
       return;
     }
+    
+    hasConnectedRef.current = true;
     
     // 1) берём из env, 2) иначе строим от window.location с правильным путем
     const wsUrl = (() => {
@@ -57,7 +60,7 @@ export const App: React.FC = () => {
       console.error('❌ [App] Connection failed:', error);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected]);
+  }, []);
 
   // Auto-navigate based on user state
   useEffect(() => {
@@ -147,18 +150,21 @@ export const App: React.FC = () => {
 
         <div className="space-y-4">
           <button
+            type="button"
             onClick={handleAdminClick}
             className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Я организатор
           </button>
           <button
+            type="button"
             onClick={handleParticipantClick}
             className="w-full py-4 px-6 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
           >
             Я участник
           </button>
           <button
+            type="button"
             onClick={handleWebSocketTestClick}
             className="w-full py-4 px-6 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
           >

@@ -51,10 +51,18 @@ export const useQuiz = () => {
   const connect = useCallback(async (url: string) => {
     console.log('🚀 [useQuiz] connect() called with URL:', url);
     
-    // Prevent multiple connections
-    if (wsServiceRef.current && wsServiceRef.current.isConnected()) {
-      console.log('⚠️ [useQuiz] WebSocket already connected, skipping');
-      return;
+    // Prevent multiple connections - check if we already have a service and it's connected
+    if (wsServiceRef.current) {
+      const isConnected = wsServiceRef.current.isConnected();
+      console.log('📊 [useQuiz] Existing service connection status:', isConnected);
+      if (isConnected) {
+        console.log('⚠️ [useQuiz] WebSocket already connected, skipping');
+        return;
+      } else {
+        console.log('🔄 [useQuiz] Existing service not connected, disconnecting first');
+        wsServiceRef.current.disconnect();
+        wsServiceRef.current = null;
+      }
     }
     
     try {

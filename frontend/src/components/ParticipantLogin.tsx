@@ -89,6 +89,7 @@ export const ParticipantLogin: React.FC<ParticipantLoginProps> = ({ onSuccess, j
           </div>
 
           <button
+            type="button"
             onClick={handleJoin}
             disabled={!roomCode || !nickname}
             className={cn(

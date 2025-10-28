@@ -131,6 +131,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
                   />
                 </div>
                 <button
+                  type="button"
                   onClick={handleCreateRoom}
                   disabled={!adminName.trim()}
                   className={cn(
@@ -198,6 +199,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
                 />
               </div>
               <button
+                type="button"
                 onClick={handleJoinAsAdmin}
                 disabled={!roomCode || !password}
                 className={cn(
