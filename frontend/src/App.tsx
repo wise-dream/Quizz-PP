@@ -52,6 +52,24 @@ export const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Auto-navigate based on user state
+  useEffect(() => {
+    console.log('🔄 [App] Checking user state for auto-navigation...');
+    console.log('🔄 [App] Current user:', user);
+    console.log('🔄 [App] Current room:', room);
+    console.log('🔄 [App] Current mode:', mode);
+    
+    if (user && room && isConnected) {
+      if (user.role === 'admin' && mode === 'select') {
+        console.log('🔄 [App] Auto-navigating to admin panel');
+        setMode('admin-panel');
+      } else if (user.role === 'participant' && mode === 'select') {
+        console.log('🔄 [App] Auto-navigating to participant panel');
+        setMode('participant-panel');
+      }
+    }
+  }, [user, room, isConnected, mode]);
+
   const handleAdminSuccess = () => {
     console.log('✅ [App] handleAdminSuccess() called');
     setMode('admin-panel');

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuiz } from '../hooks/useQuiz';
+import { useQuiz } from '../hooks/useQuizRedux';
 import { teamColors, getTeamColor, cn } from '../utils';
 import { Plus, Users, Play, Pause, Square, Settings } from 'lucide-react';
 
@@ -9,7 +9,28 @@ export const AdminPanel: React.FC = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(teamColors[0].value);
 
-  if (!room || !user) return null;
+  console.log('🔄 [AdminPanel] AdminPanel render started');
+  console.log('🔄 [AdminPanel] Current room:', room);
+  console.log('🔄 [AdminPanel] Current user:', user);
+  console.log('🔄 [AdminPanel] Current error:', error);
+
+  if (!room || !user) {
+    console.log('❌ [AdminPanel] Missing room or user data, returning null');
+    console.log('❌ [AdminPanel] Room:', room);
+    console.log('❌ [AdminPanel] User:', user);
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Загрузка админ-панели...</p>
+          <p className="text-sm text-gray-500 mt-2">
+            {!room && 'Ожидание данных комнаты...'}
+            {!user && 'Ожидание данных пользователя...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleCreateTeam = () => {
     if (!newTeamName.trim()) return;

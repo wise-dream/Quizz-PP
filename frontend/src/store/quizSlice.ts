@@ -80,7 +80,18 @@ export const quizSlice = createSlice({
       state.user = null;
       state.isAdmin = false;
       state.error = null;
+      state.adminData = null;
       // Keep connection and wsService
+      
+      // Clear localStorage
+      try {
+        localStorage.removeItem('quiz_state');
+        localStorage.removeItem('quiz_room_data');
+        localStorage.removeItem('quiz_admin_data');
+        console.log('🗑️ [Redux] Cleared localStorage');
+      } catch (err) {
+        console.error('❌ [Redux] Error clearing localStorage:', err);
+      }
     },
     
     disconnect: (state) => {

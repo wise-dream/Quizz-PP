@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuiz } from '../hooks/useQuiz';
+import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
 import { Users, Zap, Trophy, Clock } from 'lucide-react';
 
