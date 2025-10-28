@@ -21,26 +21,36 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
   }, [room, user, onSuccess, isCreating]);
 
   const handleCreateRoom = async () => {
+    console.log('🏠 [AdminLogin] handleCreateRoom() called');
     setIsCreating(true);
     try {
-      console.log('Creating room...');
+      console.log('🏠 [AdminLogin] Calling createRoom...');
       await createRoom();
+      console.log('🏠 [AdminLogin] createRoom() completed');
       // Don't call onSuccess here - wait for server response
     } catch (err) {
-      console.error('Failed to create room:', err);
+      console.error('❌ [AdminLogin] Failed to create room:', err);
       setIsCreating(false);
     }
   };
 
   const handleJoinAsAdmin = async () => {
-    if (!roomCode || !password) return;
+    console.log('🔐 [AdminLogin] handleJoinAsAdmin() called');
+    console.log('🔐 [AdminLogin] Room code:', roomCode);
+    console.log('🔐 [AdminLogin] Password:', password ? '[HIDDEN]' : '[EMPTY]');
+    
+    if (!roomCode || !password) {
+      console.log('⚠️ [AdminLogin] Missing room code or password');
+      return;
+    }
     
     try {
-      console.log('Authenticating admin...');
+      console.log('🔐 [AdminLogin] Calling authenticateAdmin...');
       await authenticateAdmin(roomCode, password);
+      console.log('🔐 [AdminLogin] authenticateAdmin() completed');
       // Don't call onSuccess here - wait for server response
     } catch (err) {
-      console.error('Failed to authenticate:', err);
+      console.error('❌ [AdminLogin] Failed to authenticate:', err);
     }
   };
 

@@ -20,14 +20,22 @@ export const ParticipantLogin: React.FC<ParticipantLoginProps> = ({ onSuccess })
   }, [room, user, onSuccess]);
 
   const handleJoin = async () => {
-    if (!roomCode || !nickname) return;
+    console.log('🚪 [ParticipantLogin] handleJoin() called');
+    console.log('🚪 [ParticipantLogin] Room code:', roomCode);
+    console.log('🚪 [ParticipantLogin] Nickname:', nickname);
+    
+    if (!roomCode || !nickname) {
+      console.log('⚠️ [ParticipantLogin] Missing room code or nickname');
+      return;
+    }
     
     try {
-      console.log('Joining room...');
+      console.log('🚪 [ParticipantLogin] Calling joinRoom...');
       await joinRoom(roomCode, nickname);
+      console.log('🚪 [ParticipantLogin] joinRoom() completed');
       // Don't call onSuccess here - wait for server response
     } catch (err) {
-      console.error('Failed to join room:', err);
+      console.error('❌ [ParticipantLogin] Failed to join room:', err);
     }
   };
 
