@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
 import { Users, Zap, Trophy, Clock, LogOut, Circle } from 'lucide-react';
+import { Phase } from '../types';
 
 export const ParticipantPanel: React.FC = () => {
   const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
@@ -57,7 +58,9 @@ export const ParticipantPanel: React.FC = () => {
       case 'ready':
         return { text: 'Готовность', color: 'text-yellow-600', bg: 'bg-yellow-100' };
       case 'started':
-        return { text: 'Игра идет!', color: 'text-green-600', bg: 'bg-green-100' };
+        return { text: 'Игра идет!', color: 'text-blue-600', bg: 'bg-blue-100' };
+      case 'active':
+        return { text: 'Кнопка активна!', color: 'text-green-600', bg: 'bg-green-100' };
       case 'finished':
         return { text: 'Игра завершена', color: 'text-red-600', bg: 'bg-red-100' };
       default:
@@ -227,10 +230,10 @@ export const ParticipantPanel: React.FC = () => {
               Управление
             </h2>
             
-            {room.phase === 'started' ? (
+            {room.phase === 'active' ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  {room?.questionActive ? 'Вопрос активен! Нажмите красную кнопку для ответа' : 'Ожидание вопроса'}
+                  Кнопка активна! Нажмите красную кнопку для ответа
                 </p>
 
                 {/* Timer Display */}
@@ -281,6 +284,7 @@ export const ParticipantPanel: React.FC = () => {
                 <p className="text-gray-600">
                   {room.phase === 'lobby' && 'Ожидайте начала игры'}
                   {room.phase === 'ready' && 'Готовьтесь к началу!'}
+                  {room.phase === 'started' && 'Игра началась, ожидайте активации кнопки'}
                   {room.phase === 'finished' && 'Игра завершена'}
                 </p>
               </div>

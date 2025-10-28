@@ -1,6 +1,6 @@
 // Types for PowerPoint Quiz Frontend
 
-export type Phase = 'lobby' | 'ready' | 'started' | 'finished';
+export type Phase = 'lobby' | 'ready' | 'started' | 'active' | 'finished';
 
 export type EventType = 
   | 'join' 

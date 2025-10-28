@@ -30,9 +30,7 @@
     .quiz-controls {margin:12px 0;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6}
     .quiz-controls h3 {margin:0 0 8px 0;font-size:16px;color:#495057}
     .timer-input {width:60px}
-    .api-status {margin:8px 0;padding:4px 8px;border-radius:4px;font-size:12px}
-    .api-status.success {background:#d4edda;color:#155724}
-    .api-status.error {background:#f8d7da;color:#721c24}
+    .note {font-size:12px;color:#666}
   </style>
 </head>
 <body>
@@ -41,24 +39,25 @@
     <button id="connect">Connect</button>
     <div id="status" class="status disconnected">—</div>
   </div>
-  
+
   <div class="quiz-controls">
-    <h3>🎯 Управление квизом</h3>
+    <h3>🎯 Управление квизом (через WebSocket)</h3>
     <div class="row">
       <label>Таймер (сек):</label>
       <input id="timer" type="number" value="30" min="0" max="300" class="timer-input">
-      <span style="font-size:12px;color:#666;">0 = без таймера</span>
+      <span class="note">0 = без задержки</span>
     </div>
     <div class="row">
       <button id="activate-question" class="activate">🔴 Активировать кнопку</button>
-      <button id="deactivate-question" class="deactivate">🟢 Деактивировать кнопку</button>
+      <button id="activate-players" class="activate">🟢 Активировать игроков</button>
+      <button id="deactivate-question" class="deactivate">🔴 Деактивировать кнопку</button>
     </div>
-    <div id="api-status" class="api-status" style="display:none"></div>
   </div>
 
   <div class="row">
     <button data-act="ready" data-delay="3000">Ready 3s</button>
     <button data-act="start">Start now</button>
+    <button data-act="active">Activate players</button>
     <button data-act="finish">Finish</button>
     <button data-act="reset">Reset</button>
   </div>
@@ -85,63 +84,12 @@
   const $playersContent = document.getElementById('players-content');
   const $timer = document.getElementById('timer');
   const $activateBtn = document.getElementById('activate-question');
+  const $activatePlayersBtn = document.getElementById('activate-players');
   const $deactivateBtn = document.getElementById('deactivate-question');
-  const $apiStatus = document.getElementById('api-status');
-
-  // ВАЖНО: префикс /quiz
-  const API_BASE_URL = 'https://wise-dream.ru/quiz';
 
   function updateStatus(text, className) {
     $status.textContent = text;
     $status.className = `status ${className}`;
-  }
-
-  function showApiStatus(message, isSuccess = true) {
-    $apiStatus.textContent = message;
-    $apiStatus.className = `api-status ${isSuccess ? 'success' : 'error'}`;
-    $apiStatus.style.display = 'block';
-    setTimeout(() => { $apiStatus.style.display = 'none'; }, 3000);
-  }
-
-  async function activateQuestion() {
-    const roomCode = $room.value.trim();
-    const duration = parseInt($timer.value) || 0;
-    if (!roomCode) return showApiStatus('Введите код комнаты!', false);
-
-    try {
-      $activateBtn.disabled = true; $activateBtn.textContent = '⏳ Активация...';
-      const response = await fetch(`${API_BASE_URL}/api/activate-question`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode, duration })
-      });
-      const result = await response.json().catch(() => ({}));
-      response.ok ? showApiStatus(`✅ Кнопка активирована! ${duration ? `(таймер: ${duration}с)` : ''}`)
-                  : showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
-    } catch (e) {
-      showApiStatus(`❌ Ошибка сети: ${e.message}`, false);
-    } finally {
-      $activateBtn.disabled = false; $activateBtn.textContent = '🔴 Активировать кнопку';
-    }
-  }
-
-  async function deactivateQuestion() {
-    const roomCode = $room.value.trim();
-    if (!roomCode) return showApiStatus('Введите код комнаты!', false);
-
-    try {
-      $deactivateBtn.disabled = true; $deactivateBtn.textContent = '⏳ Деактивация...';
-      const response = await fetch(`${API_BASE_URL}/api/deactivate-question`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode })
-      });
-      const result = await response.json().catch(() => ({}));
-      response.ok ? showApiStatus('✅ Кнопка деактивирована!')
-                  : showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
-    } catch (e) {
-      showApiStatus(`❌ Ошибка сети: ${e.message}`, false);
-    } finally {
-      $deactivateBtn.disabled = false; $deactivateBtn.textContent = '🟢 Деактивировать кнопку';
-    }
   }
 
   function openWs() {
@@ -160,6 +108,16 @@
     };
   }
 
+  function sendHostSetState(phase, delayMs) {
+    if (!ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({
+      type: 'host_set_state',
+      quizId: $room.value.trim(),
+      phase,
+      ...(typeof delayMs === 'number' ? { delayMs } : {})
+    }));
+  }
+
   function updatePhaseInfo(state) {
     $currentPhase.textContent = state.phase || 'lobby';
     if (state.enableAt) {
@@ -168,6 +126,40 @@
       $phaseInfo.style.display = 'block';
     } else {
       $phaseInfo.style.display = 'none';
+    }
+    updateButtonStates(state);
+  }
+
+  function updateButtonStates(state) {
+    const phase = state.phase || 'lobby';
+    
+    // Обновляем состояние кнопок в зависимости от фазы
+    if (phase === 'ready') {
+      $activateBtn.style.display = 'none';
+      $activatePlayersBtn.style.display = 'inline-block';
+      $deactivateBtn.style.display = 'none';
+      $activatePlayersBtn.textContent = '🟢 Активировать игроков';
+    } else if (phase === 'started') {
+      $activateBtn.style.display = 'none';
+      $activatePlayersBtn.style.display = 'inline-block';
+      $deactivateBtn.style.display = 'none';
+      $activatePlayersBtn.textContent = '🟢 Активировать игроков';
+    } else if (phase === 'active') {
+      $activateBtn.style.display = 'none';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'inline-block';
+      $deactivateBtn.textContent = '🔴 Деактивировать кнопку';
+    } else if (phase === 'finished') {
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Активировать кнопку';
+    } else {
+      // lobby или другие фазы
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Активировать кнопку';
     }
   }
 
@@ -189,27 +181,40 @@
   }
 
   document.getElementById('connect').onclick = openWs;
-  $activateBtn.onclick = activateQuestion;
-  $deactivateBtn.onclick = deactivateQuestion;
 
+  // Кнопки «Активировать/Деактивировать» — только WS
+  $activateBtn.onclick = () => {
+    const duration = Math.max(0, parseInt($timer.value || '0', 10));
+    // 'ready' с задержкой => блок до enableAt, потом «поехали»
+    sendHostSetState('ready', duration * 1000);
+  };
+
+  $activatePlayersBtn.onclick = () => {
+    // Переход в фазу 'active' - игроки могут нажимать кнопку
+    sendHostSetState('active');
+  };
+
+  $deactivateBtn.onclick = () => {
+    // «finish» — закрыть окно ответов
+    sendHostSetState('finished');
+  };
+
+  // Горячие WS-кнопки
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-act]');
-    if (!btn || !ws || ws.readyState !== 1) return;
+    if (!btn) return;
     const act = btn.dataset.act;
-    const roomId = $room.value;
-    if (act === 'ready') {
-      const delayMs = Number(btn.dataset.delay) || 0;
-      ws.send(JSON.stringify({ type: 'host_set_state', quizId: roomId, phase: 'ready', delayMs }));
-    } else if (act === 'start') {
-      ws.send(JSON.stringify({ type: 'host_set_state', quizId: roomId, phase: 'ready', delayMs: 0 }));
-    } else if (act === 'finish') {
-      ws.send(JSON.stringify({ type: 'host_set_state', quizId: roomId, phase: 'finished' }));
-    } else if (act === 'reset') {
-      ws.send(JSON.stringify({ type: 'host_set_state', quizId: roomId, phase: 'lobby' }));
-    }
+    if (act === 'ready')       sendHostSetState('ready', Number(btn.dataset.delay) || 0);
+    else if (act === 'start')  sendHostSetState('ready', 0);
+    else if (act === 'active') sendHostSetState('active');
+    else if (act === 'finish') sendHostSetState('finished');
+    else if (act === 'reset')  sendHostSetState('lobby');
   });
 
-  Office.onReady(() => {});
+  Office.onReady(() => {
+    // Инициализируем состояние кнопок при загрузке
+    updateButtonStates({ phase: 'lobby' });
+  });
 })();
 </script>
 </body>

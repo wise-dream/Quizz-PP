@@ -252,7 +252,7 @@ func (ws *WebSocketService) handleClick(client *models.Client, room *models.Room
 	player.ClickCount++
 
 	// Check for false start
-	if room.Phase != models.PhaseStarted || clickTime.Before(room.EnableAt) {
+	if room.Phase != models.PhaseActive || clickTime.Before(room.EnableAt) {
 		player.FalseStarts++
 		log.Printf("False start by player %s", event.UserID)
 	}
@@ -299,6 +299,17 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 	} else if event.Phase == models.PhaseStarted {
 		// Direct transition to started phase
 		room.Phase = models.PhaseStarted
+		room.EnableAt = time.Now()
+
+		// Send phase changed event
+		phaseChangedEvent := models.Event{
+			Type:  models.EventPhaseChanged,
+			Phase: event.Phase,
+		}
+		ws.broadcastToRoom(room, phaseChangedEvent)
+	} else if event.Phase == models.PhaseActive {
+		// Transition to active phase - players can now click
+		room.Phase = models.PhaseActive
 		room.EnableAt = time.Now()
 
 		// Send phase changed event

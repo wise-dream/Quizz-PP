@@ -10,21 +10,23 @@
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <style>
     html,body {margin:0;padding:12px;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
+    .banner {margin:8px 0;padding:8px;border-radius:6px;background:#e8f5ff;border-left:4px solid #0d6efd}
+    .status {margin-bottom:8px;padding:4px 8px;border-radius:4px}
+    .status.connected {background:#d4edda;color:#155724}
+    .status.disconnected {background:#f8d7da;color:#721c24}
+    .status.connecting {background:#fff3cd;color:#856404}
     table {border-collapse:collapse;width:100%}
     th,td {border:1px solid #ddd;padding:6px 8px}
     thead th {position:sticky;top:0;background:#f5f5f5}
     .first {font-weight:600;background:#e8f5e8}
     .fs {color:#c00}
-    .status {margin-bottom:8px;padding:4px 8px;border-radius:4px}
-    .status.connected {background:#d4edda;color:#155724}
-    .status.disconnected {background:#f8d7da;color:#721c24}
-    .status.connecting {background:#fff3cd;color:#856404}
   </style>
 </head>
 <body>
   <div id="status" class="status connecting">Connecting…</div>
+  <div id="banner" class="banner" style="display:none">Первой нажала команда: <strong id="first-team">—</strong></div>
   <table id="tbl">
-    <thead><tr><th>#</th><th>Игрок</th><th>Кнопка</th><th>Δt (мс)</th><th>Фальстарт</th><th>Всего</th></tr></thead>
+    <thead><tr><th>#</th><th>Игрок</th><th>Команда</th><th>Кнопка</th><th>Δt (мс)</th><th>Фальстарт</th><th>Всего</th></tr></thead>
     <tbody></tbody>
   </table>
 
@@ -32,15 +34,17 @@
 (() => {
   const room = new URLSearchParams(location.search).get('room') || 'R1';
   const wsUrl = `wss://wise-dream.ru/quiz/ws?room=${encodeURIComponent(room)}&role=viewer`;
-  let ws, state = { phase: 'lobby', enableAt: 0, players: [] };
+  let ws, state = { phase: 'lobby', enableAt: 0, players: {}, teams: {} };
 
   const $status = document.getElementById('status');
   const $tbody  = document.querySelector('#tbl tbody');
+  const $banner = document.getElementById('banner');
+  const $firstTeam = document.getElementById('first-team');
 
   function connect() {
     ws = new WebSocket(wsUrl);
     ws.onopen = () => { 
-      $status.textContent = 'Connected'; 
+      $status.textContent = `Connected (room: ${room})`; 
       $status.className = 'status connected';
     };
     ws.onclose = () => { 
@@ -55,7 +59,7 @@
     ws.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'state') { 
-        state = msg.data; 
+        state = { ...state, ...msg.data };
         render(); 
       }
       if (msg.type === 'click') { 
@@ -65,39 +69,83 @@
     };
   }
 
+  function pickTeamName(p) {
+    // пробуем разные варианты: p.teamName → teams[teamId].name → ''
+    if (!p) return '';
+    if (p.teamName) return p.teamName;
+    const t = (state.teams && p.teamId) ? state.teams[p.teamId] : null;
+    return t?.name || '';
+  }
+
   function applyClick(ev) {
-    const p = state.players[ev.userId];
+    const p = state.players?.[ev.userId];
     if (!p) return;
-    
+
     const now = Date.now();
-    const enableTime = new Date(state.enableAt).getTime();
+    const enableTime = new Date(state.enableAt || 0).getTime();
     const deltaMs = now - enableTime;
     const isFalseStart = state.phase !== 'started' || now < enableTime;
-    
+
     p.lastDeltaMs = isFalseStart ? null : deltaMs;
     p.falseStarts = (p.falseStarts || 0) + (isFalseStart ? 1 : 0);
     p.clickCount = (p.clickCount || 0) + (isFalseStart ? 0 : 1);
+
+    // если это первый валидный клик в текущем «раунде» — покажем баннер
+    if (!isFalseStart && typeof p.lastDeltaMs === 'number') {
+      const best = bestPlayer();
+      if (best && best.userId === ev.userId) {
+        const teamName = pickTeamName(best);
+        $firstTeam.textContent = teamName || (best.name || best.userId);
+        $banner.style.display = 'block';
+      }
+    }
+  }
+
+  function bestPlayer() {
+    const players = Object.values(state.players || {}).filter(p => p.connected);
+    if (players.length === 0) return null;
+    let best = null, bestTime = Number.POSITIVE_INFINITY;
+    for (const p of players) {
+      const t = (p.lastDeltaMs ?? Number.POSITIVE_INFINITY);
+      if (t < bestTime) { bestTime = t; best = p; }
+    }
+    return isFinite(bestTime) ? best : null;
   }
 
   function render() {
-    const players = Object.values(state.players || {});
-    const rows = players
+    const players = Object.values(state.players || {})
       .filter(p => p.connected)
       .sort((a,b) => {
         const aTime = a.lastDeltaMs ?? 9e9;
         const bTime = b.lastDeltaMs ?? 9e9;
         return aTime - bTime;
-      })
-      .map((p,i) => `
-        <tr class="${i===0 && (p.lastDeltaMs ?? 9e9) < 9e9 ? 'first' : ''}">
+      });
+
+    const rows = players.map((p,i) => {
+      const teamName = pickTeamName(p);
+      const firstRow = (i===0 && (p.lastDeltaMs ?? 9e9) < 9e9) ? 'first' : '';
+      return `
+        <tr class="${firstRow}">
           <td>${i+1}</td>
           <td>${p.name || p.userId}</td>
+          <td>${teamName}</td>
           <td>${p.buttonId || ''}</td>
           <td>${p.lastDeltaMs ?? ''}</td>
           <td class="${p.lastDeltaMs==null && p.falseStarts>0 ? 'fs' : ''}">${p.falseStarts || 0}</td>
           <td>${p.clickCount || 0}</td>
-        </tr>`);
+        </tr>`;
+    });
+
     $tbody.innerHTML = rows.join('');
+
+    const best = bestPlayer();
+    if (best && isFinite(best.lastDeltaMs ?? Infinity)) {
+      const teamName = pickTeamName(best);
+      $firstTeam.textContent = teamName || (best.name || best.userId);
+      $banner.style.display = 'block';
+    } else {
+      $banner.style.display = 'none';
+    }
   }
 
   Office.onReady(() => connect());
