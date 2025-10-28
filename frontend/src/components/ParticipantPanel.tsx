@@ -2,10 +2,9 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
 import { Users, Zap, Trophy, Clock, LogOut, Circle } from 'lucide-react';
-import { Phase } from '../types';
 
 export const ParticipantPanel: React.FC = () => {
-  const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
+  const { room, user, joinTeam, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
 
@@ -55,10 +54,8 @@ export const ParticipantPanel: React.FC = () => {
     switch (room.phase) {
       case 'lobby':
         return { text: 'Ожидание начала', color: 'text-gray-600', bg: 'bg-gray-100' };
-      case 'ready':
-        return { text: 'Готовность', color: 'text-yellow-600', bg: 'bg-yellow-100' };
       case 'started':
-        return { text: 'Игра идет!', color: 'text-blue-600', bg: 'bg-blue-100' };
+        return { text: 'Игра началась', color: 'text-blue-600', bg: 'bg-blue-100' };
       case 'active':
         return { text: 'Кнопка активна!', color: 'text-green-600', bg: 'bg-green-100' };
       case 'finished':
@@ -230,10 +227,13 @@ export const ParticipantPanel: React.FC = () => {
               Управление
             </h2>
             
-            {room.phase === 'active' ? (
+            {(room.phase === 'started' || room.phase === 'active') ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Кнопка активна! Нажмите красную кнопку для ответа
+                  {room.phase === 'started' 
+                    ? 'Игра началась! Ожидайте активации кнопки...' 
+                    : 'Кнопка активна! Нажмите красную кнопку для ответа'
+                  }
                 </p>
 
                 {/* Timer Display */}
@@ -252,20 +252,26 @@ export const ParticipantPanel: React.FC = () => {
                 <div className="mb-6 text-center">
                   <button
                     onClick={() => handleAnswer('ANSWER')}
-                    disabled={!room?.questionActive}
+                    disabled={room.phase !== 'active' || !room?.questionActive}
                     className={cn(
                       'w-32 h-32 rounded-full font-bold text-2xl transition-all transform',
-                      'bg-red-600 hover:bg-red-700 text-white',
-                      'disabled:bg-gray-400 disabled:cursor-not-allowed',
+                      room.phase === 'active' && room?.questionActive
+                        ? 'bg-red-600 hover:bg-red-700 text-white hover:scale-105'
+                        : 'bg-gray-400 text-gray-200 cursor-not-allowed',
                       'focus:outline-none focus:ring-4 focus:ring-red-300',
-                      'active:scale-95 hover:scale-105',
+                      'active:scale-95',
                       'shadow-lg hover:shadow-xl'
                     )}
                   >
                     <Circle className="w-16 h-16 mx-auto" />
                   </button>
                   <p className="text-xs text-gray-500 mt-2">
-                    {room?.questionActive ? 'Нажмите для ответа' : 'Кнопка заблокирована'}
+                    {room.phase === 'started' 
+                      ? 'Ожидайте активации кнопки' 
+                      : room?.questionActive 
+                        ? 'Нажмите для ответа' 
+                        : 'Кнопка заблокирована'
+                    }
                   </p>
                 </div>
 
@@ -283,8 +289,6 @@ export const ParticipantPanel: React.FC = () => {
                 <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600">
                   {room.phase === 'lobby' && 'Ожидайте начала игры'}
-                  {room.phase === 'ready' && 'Готовьтесь к началу!'}
-                  {room.phase === 'started' && 'Игра началась, ожидайте активации кнопки'}
                   {room.phase === 'finished' && 'Игра завершена'}
                 </p>
               </div>

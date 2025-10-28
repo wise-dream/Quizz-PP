@@ -188,8 +188,8 @@ export const AdminPanel: React.FC = () => {
             </h2>
             <div className="space-y-3">
               {getPhaseButton('lobby', 'Ожидание', <Users className="w-4 h-4" />, 'gray')}
-              {getPhaseButton('ready', 'Готовность', <Play className="w-4 h-4" />, 'yellow')}
-              {getPhaseButton('started', 'Начало', <Play className="w-4 h-4" />, 'green')}
+              {getPhaseButton('started', 'Начало игры', <Play className="w-4 h-4" />, 'blue')}
+              {getPhaseButton('active', 'Активировать кнопку', <Play className="w-4 h-4" />, 'green')}
               {getPhaseButton('finished', 'Завершение', <Square className="w-4 h-4" />, 'red')}
             </div>
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">

@@ -6,60 +6,203 @@
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self' https: wss:; connect-src https: wss:;
                  img-src https: data:; style-src 'self' 'unsafe-inline' https:;
-                 script-src 'self' https: 'unsafe-inline'; frame-ancestors 'self' https://*.office.com https://*.officeapps.live.com https://*.sharepoint.com;">
+                 script-src 'self' https: 'unsafe-inline';">
   <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
   <style>
-    body {margin:0;padding:12px;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial}
-    button {padding:8px 12px;margin:6px 6px 0 0;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer}
-    button:hover {background:#f5f5f5}
-    button:disabled {opacity:0.6;cursor:not-allowed}
-    button.activate {background:#dc3545;color:white;border-color:#dc3545}
-    button.activate:hover {background:#c82333}
-    button.deactivate {background:#28a745;color:white;border-color:#28a745}
-    button.deactivate:hover {background:#218838}
-    .row {margin:8px 0}
-    .status {margin:8px 0;padding:4px 8px;border-radius:4px}
-    .status.connected {background:#d4edda;color:#155724}
-    .status.disconnected {background:#f8d7da;color:#721c24}
-    .status.connecting {background:#fff3cd;color:#856404}
-    input {padding:4px 8px;border:1px solid #ccc;border-radius:4px;margin:0 4px}
-    .phase-info {margin:8px 0;padding:8px;background:#f8f9fa;border-radius:4px;border-left:4px solid #007bff}
-    .players-list {margin:8px 0;max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:4px}
-    .player-item {padding:4px 8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between}
-    .player-item:last-child {border-bottom:none}
-    .quiz-controls {margin:12px 0;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6}
-    .quiz-controls h3 {margin:0 0 8px 0;font-size:16px;color:#495057}
-    .timer-input {width:60px}
-    .api-status {margin:8px 0;padding:4px 8px;border-radius:4px;font-size:12px}
-    .api-status.success {background:#d4edda;color:#155724}
-    .api-status.error {background:#f8d7da;color:#721c24}
+    /* Оптимизация для PowerPoint taskpane (320x531px) */
+    body {
+      margin: 0;
+      padding: 8px;
+      font: 13px/1.3 system-ui, Segoe UI, Roboto, Arial;
+      width: 304px; /* 320px - 16px padding */
+      box-sizing: border-box;
+    }
+    
+    button {
+      padding: 6px 10px;
+      margin: 4px 4px 0 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      min-height: 28px;
+    }
+    
+    button:hover { background: #f5f5f5 }
+    button:disabled { opacity: 0.6; cursor: not-allowed }
+    
+    button.activate { background: #dc3545; color: white; border-color: #dc3545 }
+    button.activate:hover { background: #c82333 }
+    button.deactivate { background: #28a745; color: white; border-color: #28a745 }
+    button.deactivate:hover { background: #218838 }
+    
+    .row { margin: 6px 0 }
+    .status { margin: 6px 0; padding: 4px 6px; border-radius: 4px; font-size: 11px }
+    .status.connected { background: #d4edda; color: #155724 }
+    .status.disconnected { background: #f8d7da; color: #721c24 }
+    .status.connecting { background: #fff3cd; color: #856404 }
+    
+    input {
+      padding: 4px 6px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0 2px;
+      font-size: 12px;
+      height: 24px;
+    }
+    
+    .phase-info {
+      margin: 6px 0;
+      padding: 6px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border-left: 4px solid #007bff;
+      font-size: 11px;
+    }
+    
+    .players-list {
+      margin: 6px 0;
+      max-height: 120px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    
+    .player-item {
+      padding: 3px 6px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+    }
+    .player-item:last-child { border-bottom: none }
+    
+    .quiz-controls {
+      margin: 8px 0;
+      padding: 8px;
+      background: #f8f9fa;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+    }
+    
+    .quiz-controls h3 {
+      margin: 0 0 6px 0;
+      font-size: 14px;
+      color: #495057;
+    }
+    
+    .timer-input { width: 50px }
+    .note { font-size: 10px; color: #666 }
+    
+    /* Компактные секции */
+    h4 {
+      margin: 0 0 4px 0;
+      font-size: 13px;
+    }
+    
+    /* Адаптивные кнопки */
+    button[id*="create"], button[id*="join"] {
+      width: 100%;
+      margin: 2px 0;
+      font-size: 11px;
+    }
+    
+    /* Компактные поля ввода */
+    input[placeholder] {
+      width: 100%;
+      margin: 2px 0;
+    }
   </style>
 </head>
 <body>
   <div class="row">
-    Комната: <input id="room" value="R1" size="8">
-    <button id="connect">Connect</button>
+    <div style="margin-bottom: 4px;">
+      <button id="create-game" style="background:#007bff;color:white;border-color:#007bff;margin-right:4px">🎮 Создать игру</button>
+      <button id="join-game" style="background:#6c757d;color:white;border-color:#6c757d">🔗 Подключиться</button>
+    </div>
+    <div id="game-creation-section" style="display:none;margin:4px 0;padding:8px;background:#e9ecef;border-radius:4px">
+      <h4 style="margin:0 0 4px 0;color:#495057">Создание новой игры</h4>
+      <div style="margin:4px 0;font-size:10px;color:#666">
+        Будет создана комната с уникальным 4-символьным кодом и паролем администратора.
+      </div>
+      <div style="margin:4px 0">
+        <button id="confirm-create" style="background:#28a745;color:white;border-color:#28a745">Создать игру</button>
+        <button id="cancel-create" style="background:#dc3545;color:white;border-color:#dc3545">Отмена</button>
+      </div>
+    </div>
+    <div id="game-info-section" style="display:none;margin:4px 0;padding:8px;background:#d4edda;border-radius:4px;border-left:4px solid #28a745">
+      <h4 style="margin:0 0 4px 0;color:#155724">Информация об игре</h4>
+      <div style="margin:2px 0"><strong>Номер комнаты:</strong> <span id="room-code-display" style="font-family:monospace;font-size:16px;font-weight:bold;color:#007bff"></span></div>
+      <div style="margin:2px 0"><strong>Пароль администратора:</strong> <span id="admin-password-display" style="font-family:monospace;font-size:14px;font-weight:bold;color:#dc3545"></span></div>
+      <div style="margin:4px 0;font-size:10px;color:#666">
+        Поделитесь номером комнаты с участниками. Пароль нужен только для управления игрой.
+      </div>
+      <div style="margin:4px 0">
+        <button id="back-to-main" style="background:#6c757d;color:white;border-color:#6c757d">← Назад к меню</button>
+      </div>
+    </div>
+    <div id="join-section" style="display:none">
+      <div style="margin:4px 0">
+        <label>Номер комнаты:</label>
+        <input id="room" value="" size="8" placeholder="Введите код комнаты">
+      </div>
+      <div style="margin:4px 0">
+        <label>Пароль администратора:</label>
+        <input id="admin-password" type="password" placeholder="Введите пароль администратора" style="width: 100%; margin: 2px 0;">
+      </div>
+      <div style="margin:4px 0">
+        <button id="connect">Подключиться</button>
+      </div>
+      <div style="margin:4px 0">
+        <button id="back-to-main-join" style="background:#6c757d;color:white;border-color:#6c757d">← Назад к меню</button>
+      </div>
+    </div>
     <div id="status" class="status disconnected">—</div>
   </div>
-  
-  <!-- Quiz Controls -->
+
   <div class="quiz-controls">
     <h3>🎯 Управление квизом</h3>
     <div class="row">
       <label>Таймер (сек):</label>
       <input id="timer" type="number" value="30" min="0" max="300" class="timer-input">
-      <span style="font-size:12px;color:#666;">0 = без таймера</span>
+      <span class="note">0 = без задержки</span>
     </div>
     <div class="row">
       <button id="activate-question" class="activate">🔴 Активировать кнопку</button>
-      <button id="deactivate-question" class="deactivate">🟢 Деактивировать кнопку</button>
+      <button id="activate-players" class="activate">🟢 Активировать кнопку</button>
+      <button id="deactivate-question" class="deactivate">⏹️ Деактивировать кнопку</button>
     </div>
-    <div id="api-status" class="api-status" style="display:none"></div>
+  </div>
+
+  <div class="quiz-controls">
+    <h3>👥 Управление командами</h3>
+    <div class="row">
+      <input id="team-name" placeholder="Название команды" style="width: auto; margin: 2px 0;">
+    </div>
+    <div class="row">
+      <div style="display: flex; gap: 4px; margin: 2px 0;">
+        <button id="team-color-red" class="team-color-btn" style="background: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#dc3545"></button>
+        <button id="team-color-blue" class="team-color-btn" style="background: #007bff; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#007bff"></button>
+        <button id="team-color-green" class="team-color-btn" style="background: #28a745; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#28a745"></button>
+        <button id="team-color-yellow" class="team-color-btn" style="background: #ffc107; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#ffc107"></button>
+        <button id="team-color-purple" class="team-color-btn" style="background: #6f42c1; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#6f42c1"></button>
+        <button id="team-color-orange" class="team-color-btn" style="background: #fd7e14; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ccc;" data-color="#fd7e14"></button>
+      </div>
+    </div>
+    <div class="row">
+      <button id="create-team" style="background:#28a745;color:white;border-color:#28a745;width:100%;margin:2px 0;">➕ Создать команду</button>
+    </div>
+    <div id="teams-list" class="players-list" style="display:none;margin-top:8px;">
+      <div style="padding:4px 8px;background:#f5f5f5;font-weight:bold;border-bottom:1px solid #ddd">Команды:</div>
+      <div id="teams-content"></div>
+    </div>
   </div>
 
   <div class="row">
-    <button data-act="ready" data-delay="3000">Ready 3s</button>
+    <button data-act="start" data-delay="3000">Start 3s</button>
     <button data-act="start">Start now</button>
+    <button data-act="active">Activate players</button>
     <button data-act="finish">Finish</button>
     <button data-act="reset">Reset</button>
   </div>
@@ -74,10 +217,34 @@
     <div id="players-content"></div>
   </div>
 
+  <!-- Модалка для подтверждения ответа -->
+  <div id="answer-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;min-width:300px">
+      <h3 style="margin:0 0 15px 0">Подтверждение ответа</h3>
+      <p><strong>Первый ответ:</strong> <span id="first-answerer">—</span></p>
+      <p><strong>Ответ:</strong> <span id="player-answer">—</span></p>
+      <div style="margin:15px 0">
+        <label>Количество очков:</label>
+        <input id="points-input" type="number" value="10" min="0" max="100" style="width:80px;margin-left:10px">
+      </div>
+      <div style="text-align:right;margin-top:20px">
+        <button id="answer-correct" style="background:#28a745;color:white;border:none;padding:8px 16px;margin-right:10px;border-radius:4px">Правильно</button>
+        <button id="answer-wrong" style="background:#dc3545;color:white;border:none;padding:8px 16px;margin-right:10px;border-radius:4px">Неправильно</button>
+        <button id="answer-cancel" style="background:#6c757d;color:white;border:none;padding:8px 16px;border-radius:4px">Отмена</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 (() => {
   let ws;
+  let currentRoomCode = '';
+  let currentAdminPassword = '';
+  let selectedTeamColor = '#dc3545'; // Default to red
+  
+  // UI Elements
   const $room = document.getElementById('room');
+  const $adminPassword = document.getElementById('admin-password');
   const $status = document.getElementById('status');
   const $phaseInfo = document.getElementById('phase-info');
   const $currentPhase = document.getElementById('current-phase');
@@ -86,118 +253,245 @@
   const $playersContent = document.getElementById('players-content');
   const $timer = document.getElementById('timer');
   const $activateBtn = document.getElementById('activate-question');
+  const $activatePlayersBtn = document.getElementById('activate-players');
   const $deactivateBtn = document.getElementById('deactivate-question');
-  const $apiStatus = document.getElementById('api-status');
-
-  // API Configuration
-  const API_BASE_URL = 'https://wise-dream.ru'; // Change this to your server URL
+  
+  // Game creation elements
+  const $createGameBtn = document.getElementById('create-game');
+  const $joinGameBtn = document.getElementById('join-game');
+  const $gameCreationSection = document.getElementById('game-creation-section');
+  const $gameInfoSection = document.getElementById('game-info-section');
+  const $joinSection = document.getElementById('join-section');
+  const $confirmCreate = document.getElementById('confirm-create');
+  const $cancelCreate = document.getElementById('cancel-create');
+  const $roomCodeDisplay = document.getElementById('room-code-display');
+  const $adminPasswordDisplay = document.getElementById('admin-password-display');
+  const $backToMain = document.getElementById('back-to-main');
+  const $backToMainJoin = document.getElementById('back-to-main-join');
+  
+  // Элементы модалки
+  const $answerModal = document.getElementById('answer-modal');
+  const $firstAnswerer = document.getElementById('first-answerer');
+  const $playerAnswer = document.getElementById('player-answer');
+  const $pointsInput = document.getElementById('points-input');
+  const $answerCorrect = document.getElementById('answer-correct');
+  const $answerWrong = document.getElementById('answer-wrong');
+  const $answerCancel = document.getElementById('answer-cancel');
+  
+  // Team management elements
+  const $teamName = document.getElementById('team-name');
+  const $createTeamBtn = document.getElementById('create-team');
+  const $teamsList = document.getElementById('teams-list');
+  const $teamsContent = document.getElementById('teams-content');
+  const $teamColorBtns = document.querySelectorAll('.team-color-btn');
 
   function updateStatus(text, className) {
     $status.textContent = text;
     $status.className = `status ${className}`;
   }
 
-  function showApiStatus(message, isSuccess = true) {
-    $apiStatus.textContent = message;
-    $apiStatus.className = `api-status ${isSuccess ? 'success' : 'error'}`;
-    $apiStatus.style.display = 'block';
-    
-    // Hide after 3 seconds
-    setTimeout(() => {
-      $apiStatus.style.display = 'none';
-    }, 3000);
+  // Game creation functions
+  function showCreateGameSection() {
+    $gameCreationSection.style.display = 'block';
+    $gameInfoSection.style.display = 'none';
+    $joinSection.style.display = 'none';
+    $createGameBtn.style.display = 'none';
+    $joinGameBtn.style.display = 'none';
   }
 
-  async function activateQuestion() {
-    const roomCode = $room.value.trim();
-    const duration = parseInt($timer.value) || 0;
-    
-    if (!roomCode) {
-      showApiStatus('Введите код комнаты!', false);
-      return;
-    }
-
-    try {
-      $activateBtn.disabled = true;
-      $activateBtn.textContent = '⏳ Активация...';
-      
-      const response = await fetch(`${API_BASE_URL}/api/activate-question`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roomCode: roomCode,
-          duration: duration
-        })
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        showApiStatus(`✅ Кнопка активирована! ${duration > 0 ? `(таймер: ${duration}с)` : ''}`);
-      } else {
-        showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
-      }
-    } catch (error) {
-      showApiStatus(`❌ Ошибка сети: ${error.message}`, false);
-    } finally {
-      $activateBtn.disabled = false;
-      $activateBtn.textContent = '🔴 Активировать кнопку';
-    }
+  function showJoinSection() {
+    $gameCreationSection.style.display = 'none';
+    $gameInfoSection.style.display = 'none';
+    $joinSection.style.display = 'block';
+    $createGameBtn.style.display = 'none';
+    $joinGameBtn.style.display = 'none';
   }
 
-  async function deactivateQuestion() {
-    const roomCode = $room.value.trim();
+  function showMainButtons() {
+    $gameCreationSection.style.display = 'none';
+    $gameInfoSection.style.display = 'none';
+    $joinSection.style.display = 'none';
+    $createGameBtn.style.display = 'inline-block';
+    $joinGameBtn.style.display = 'inline-block';
+  }
+
+  function showGameInfo(roomCode, adminPassword) {
+    currentRoomCode = roomCode;
+    currentAdminPassword = adminPassword;
+    $roomCodeDisplay.textContent = roomCode;
+    $adminPasswordDisplay.textContent = adminPassword;
+    $gameInfoSection.style.display = 'block';
+    $gameCreationSection.style.display = 'none';
+    $joinSection.style.display = 'none';
+    $createGameBtn.style.display = 'none';
+    $joinGameBtn.style.display = 'none';
+  }
+
+  function createGame() {
+    // Connect to WebSocket first
+    if (ws) try { ws.close(); } catch {}
     
-    if (!roomCode) {
-      showApiStatus('Введите код комнаты!', false);
+    updateStatus('Подключение...', 'connecting');
+    
+    // Connect without room parameter for creation
+    const url = `wss://wise-dream.ru/quiz/ws?role=host`;
+    console.log('Connecting to WebSocket:', url);
+    
+    try {
+      ws = new WebSocket(url);
+    } catch (error) {
+      console.error('Failed to create WebSocket:', error);
+      updateStatus('Ошибка создания соединения', 'disconnected');
       return;
     }
-
-    try {
-      $deactivateBtn.disabled = true;
-      $deactivateBtn.textContent = '⏳ Деактивация...';
-      
-      const response = await fetch(`${API_BASE_URL}/api/deactivate-question`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          roomCode: roomCode
-        })
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        showApiStatus('✅ Кнопка деактивирована!');
-      } else {
-        showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
+    
+    // Set timeout for connection
+    const connectionTimeout = setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.CONNECTING) {
+        console.error('WebSocket connection timeout');
+        ws.close();
+        updateStatus('Таймаут подключения', 'disconnected');
       }
-    } catch (error) {
-      showApiStatus(`❌ Ошибка сети: ${error.message}`, false);
-    } finally {
-      $deactivateBtn.disabled = false;
-      $deactivateBtn.textContent = '🟢 Деактивировать кнопку';
-    }
+    }, 10000); // 10 seconds timeout
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected successfully');
+      clearTimeout(connectionTimeout);
+      updateStatus('Отправка запроса...', 'connecting');
+      
+      // Send create room event - идентично фронтенду
+      const createRoomEvent = {
+        type: 'create_room'
+      };
+      console.log('Sending create room event:', createRoomEvent);
+      ws.send(JSON.stringify(createRoomEvent));
+    };
+    
+    ws.onclose = (event) => {
+      console.log('WebSocket connection closed:', event.code, event.reason);
+      clearTimeout(connectionTimeout);
+      updateStatus('Соединение закрыто', 'disconnected');
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      clearTimeout(connectionTimeout);
+      updateStatus('Ошибка соединения', 'disconnected');
+    };
+    ws.onmessage = (ev) => {
+      console.log('WebSocket message received:', ev.data);
+      try {
+        // Split message by newlines in case multiple JSON messages are sent
+        const messages = ev.data.trim().split('\n').filter(msg => msg.trim());
+        
+        for (const messageText of messages) {
+          const msg = JSON.parse(messageText);
+          console.log('Parsed message:', msg);
+          
+          if (msg.type === 'room_created') {
+            const roomData = msg.data;
+            const adminToken = msg.adminToken;
+            showGameInfo(roomData.code, adminToken);
+            updateStatus('Игра создана!', 'connected');
+            // Update room input for future use
+            $room.value = roomData.code;
+          } else if (msg.type === 'state') {
+            updatePhaseInfo(msg.data);
+          } else if (msg.type === 'answer_received') {
+            showAnswerModal(msg.data);
+          } else if (msg.type === 'team_created') {
+            console.log('Team created:', msg.data);
+            updateStatus('Команда создана!', 'connected');
+          } else if (msg.type === 'player_joined') {
+            console.log('Player joined:', msg.data);
+          } else if (msg.type === 'team_joined') {
+            console.log('Player joined team:', msg.data);
+          } else {
+            console.log('Unknown message type:', msg.type);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+        console.error('Raw message:', ev.data);
+        updateStatus('Ошибка получения данных', 'disconnected');
+      }
+    };
   }
 
   function openWs() {
+    const roomCode = $room.value.trim();
+    const adminPassword = $adminPassword.value.trim();
+    
+    if (!roomCode) {
+      alert('Пожалуйста, введите номер комнаты');
+      return;
+    }
+    
+    if (!adminPassword) {
+      alert('Пожалуйста, введите пароль администратора');
+      return;
+    }
+
     if (ws) try { ws.close(); } catch {}
-    const url = `ws://localhost:8080/ws?room=${encodeURIComponent($room.value)}&role=host`;
+    const url = `wss://wise-dream.ru/quiz/ws?room=${encodeURIComponent(roomCode)}&role=host`;
     ws = new WebSocket(url);
-    ws.onopen = () => updateStatus('Connected', 'connected');
-    ws.onclose = () => updateStatus('Closed', 'disconnected');
-    ws.onerror = () => updateStatus('Error', 'disconnected');
+    
+    ws.onopen = () => {
+      updateStatus('Подключено, аутентификация...', 'connecting');
+      
+      // Send admin authentication event
+      ws.send(JSON.stringify({
+        type: 'admin_auth',
+        roomCode: roomCode,
+        password: adminPassword
+      }));
+    };
+    
+    ws.onclose = () => updateStatus('Соединение закрыто', 'disconnected');
+    ws.onerror = () => updateStatus('Ошибка соединения', 'disconnected');
     ws.onmessage = (ev) => {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'state') {
-        updatePhaseInfo(msg.data);
-        updatePlayersList(msg.data);
+      try {
+        // Split message by newlines in case multiple JSON messages are sent
+        const messages = ev.data.trim().split('\n').filter(msg => msg.trim());
+        
+        for (const messageText of messages) {
+          const msg = JSON.parse(messageText);
+          
+          if (msg.type === 'state') {
+            updatePhaseInfo(msg.data);
+            updateStatus('Подключено как администратор', 'connected');
+          } else if (msg.type === 'error') {
+            console.error('Authentication error:', msg.message);
+            updateStatus('Ошибка аутентификации: ' + (msg.message || 'Неверный пароль'), 'disconnected');
+            alert('Ошибка аутентификации: ' + (msg.message || 'Неверный пароль'));
+          } else if (msg.type === 'answer_received') {
+            // Показать модалку с ответом игрока
+            showAnswerModal(msg.data);
+          } else if (msg.type === 'team_created') {
+            console.log('Team created:', msg.data);
+            updateStatus('Команда создана!', 'connected');
+          } else if (msg.type === 'player_joined') {
+            console.log('Player joined:', msg.data);
+          } else if (msg.type === 'team_joined') {
+            console.log('Player joined team:', msg.data);
+          }
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+        console.error('Raw message:', ev.data);
       }
     };
+  }
+
+  function sendHostSetState(phase, delayMs) {
+    if (!ws || ws.readyState !== 1) return;
+    const roomCode = currentRoomCode || $room.value.trim();
+    ws.send(JSON.stringify({
+      type: 'host_set_state',
+      quizId: roomCode,
+      phase,
+      ...(typeof delayMs === 'number' ? { delayMs } : {})
+    }));
   }
 
   function updatePhaseInfo(state) {
@@ -208,6 +502,46 @@
       $phaseInfo.style.display = 'block';
     } else {
       $phaseInfo.style.display = 'none';
+    }
+    updateButtonStates(state);
+    updatePlayersList(state);
+    updateTeamsList(state);
+  }
+
+  function updateButtonStates(state) {
+    const phase = state.phase || 'lobby';
+    
+    // Обновляем состояние кнопок в зависимости от фазы
+    if (phase === 'lobby') {
+      // В лобби - показываем кнопку начала игры
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Начать игру';
+    } else if (phase === 'started') {
+      // Игра началась - показываем кнопку активации кнопки
+      $activateBtn.style.display = 'none';
+      $activatePlayersBtn.style.display = 'inline-block';
+      $deactivateBtn.style.display = 'none';
+      $activatePlayersBtn.textContent = '🟢 Активировать кнопку';
+    } else if (phase === 'active') {
+      // Кнопка активна - показываем кнопку деактивации
+      $activateBtn.style.display = 'none';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'inline-block';
+      $deactivateBtn.textContent = '⏹️ Деактивировать кнопку';
+    } else if (phase === 'finished') {
+      // Игра завершена - показываем кнопку начала новой игры
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Начать новую игру';
+    } else {
+      // Fallback
+      $activateBtn.style.display = 'inline-block';
+      $activatePlayersBtn.style.display = 'none';
+      $deactivateBtn.style.display = 'none';
+      $activateBtn.textContent = '🔴 Начать игру';
     }
   }
 
@@ -228,49 +562,153 @@
     }
   }
 
-  // Event listeners
-  document.getElementById('connect').onclick = openWs;
-  $activateBtn.onclick = activateQuestion;
-  $deactivateBtn.onclick = deactivateQuestion;
+  function updateTeamsList(state) {
+    const teams = Object.values(state.teams || {});
+    if (teams.length > 0) {
+      $teamsContent.innerHTML = teams
+        .map(team => `
+          <div class="player-item">
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: ${team.color};"></div>
+              <span style="font-weight: bold;">${team.name}</span>
+            </div>
+            <span style="font-size: 10px;">${team.players.length} игроков • ${team.score} очков</span>
+          </div>
+        `).join('');
+      $teamsList.style.display = 'block';
+    } else {
+      $teamsList.style.display = 'none';
+    }
+  }
 
+  function createTeam() {
+    const teamName = $teamName.value.trim();
+    if (!teamName) {
+      alert('Пожалуйста, введите название команды');
+      return;
+    }
+
+    if (!ws || ws.readyState !== 1) {
+      alert('Нет подключения к серверу');
+      return;
+    }
+
+    const roomCode = currentRoomCode || $room.value.trim();
+    if (!roomCode) {
+      alert('Нет активной комнаты');
+      return;
+    }
+
+    // Send create team event
+    ws.send(JSON.stringify({
+      type: 'create_team',
+      quizId: roomCode,
+      teamName: teamName,
+      teamColor: selectedTeamColor
+    }));
+
+    // Clear input
+    $teamName.value = '';
+  }
+
+  function selectTeamColor(color) {
+    selectedTeamColor = color;
+    // Update visual selection
+    $teamColorBtns.forEach(btn => {
+      btn.style.boxShadow = btn.dataset.color === color ? '0 0 0 2px #000' : '0 0 0 1px #ccc';
+    });
+  }
+
+  function showAnswerModal(answerData) {
+    $firstAnswerer.textContent = answerData.playerName || answerData.userId || 'Неизвестно';
+    $playerAnswer.textContent = answerData.answer || 'Нет ответа';
+    $pointsInput.value = 10; // Значение по умолчанию
+    $answerModal.style.display = 'block';
+  }
+
+  function hideAnswerModal() {
+    $answerModal.style.display = 'none';
+  }
+
+  function sendAnswerConfirmation(isCorrect, points) {
+    if (!ws || ws.readyState !== 1) return;
+    const roomCode = currentRoomCode || $room.value.trim();
+    ws.send(JSON.stringify({
+      type: 'answer_confirmation',
+      quizId: roomCode,
+      isCorrect: isCorrect,
+      points: points
+    }));
+    hideAnswerModal();
+  }
+
+  // Event handlers
+  document.getElementById('connect').onclick = openWs;
+  
+  $createGameBtn.onclick = showCreateGameSection;
+  $joinGameBtn.onclick = showJoinSection;
+  $confirmCreate.onclick = createGame;
+  $cancelCreate.onclick = showMainButtons;
+  $backToMain.onclick = showMainButtons;
+  $backToMainJoin.onclick = showMainButtons;
+
+  // Кнопки «Активировать/Деактивировать» — только WS
+  $activateBtn.onclick = () => {
+    const duration = Math.max(0, parseInt($timer.value || '0', 10));
+    // Переход в 'started' с задержкой => автоматически в 'active'
+    sendHostSetState('started', duration * 1000);
+  };
+
+  $activatePlayersBtn.onclick = () => {
+    // Переход в фазу 'active' - игроки могут нажимать кнопку
+    sendHostSetState('active');
+  };
+
+  $deactivateBtn.onclick = () => {
+    // Деактивация кнопки - возврат в 'started'
+    sendHostSetState('started');
+  };
+
+  // Горячие WS-кнопки
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-act]');
-    if (!btn || !ws || ws.readyState !== 1) return;
-    
+    if (!btn) return;
     const act = btn.dataset.act;
-    const roomId = $room.value;
-    
-    if (act === 'ready') {
-      const delayMs = Number(btn.dataset.delay) || 0;
-      ws.send(JSON.stringify({ 
-        type: 'host_set_state', 
-        quizId: roomId,
-        phase: 'ready', 
-        delayMs: delayMs 
-      }));
-    } else if (act === 'start') {
-      ws.send(JSON.stringify({ 
-        type: 'host_set_state', 
-        quizId: roomId,
-        phase: 'ready', 
-        delayMs: 0 
-      }));
-    } else if (act === 'finish') {
-      ws.send(JSON.stringify({ 
-        type: 'host_set_state', 
-        quizId: roomId,
-        phase: 'finished' 
-      }));
-    } else if (act === 'reset') {
-      ws.send(JSON.stringify({ 
-        type: 'host_set_state', 
-        quizId: roomId,
-        phase: 'lobby' 
-      }));
-    }
+    if (act === 'start')  sendHostSetState('started', Number(btn.dataset.delay) || 0);
+    else if (act === 'active') sendHostSetState('active');
+    else if (act === 'finish') sendHostSetState('finished');
+    else if (act === 'reset')  sendHostSetState('lobby');
   });
 
-  Office.onReady(() => {});
+  // Team management event handlers
+  $createTeamBtn.onclick = createTeam;
+  
+  // Color selection handlers
+  $teamColorBtns.forEach(btn => {
+    btn.onclick = () => selectTeamColor(btn.dataset.color);
+  });
+
+  // Обработчики модалки
+  $answerCorrect.onclick = () => {
+    const points = parseInt($pointsInput.value) || 0;
+    sendAnswerConfirmation(true, points);
+  };
+
+  $answerWrong.onclick = () => {
+    sendAnswerConfirmation(false, 0);
+  };
+
+  $answerCancel.onclick = () => {
+    hideAnswerModal();
+  };
+
+  Office.onReady(() => {
+    // Инициализируем состояние кнопок при загрузке
+    updateButtonStates({ phase: 'lobby' });
+    
+    // Инициализируем выбранный цвет команды
+    selectTeamColor(selectedTeamColor);
+  });
 })();
 </script>
 </body>

@@ -12,7 +12,6 @@ type Phase string
 
 const (
 	PhaseLobby    Phase = "lobby"
-	PhaseReady    Phase = "ready"
 	PhaseStarted  Phase = "started"
 	PhaseActive   Phase = "active"
 	PhaseFinished Phase = "finished"

@@ -97,7 +97,12 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 
 	roomID := event.QuizID
 	if roomID == "" {
-		roomID = client.RoomID // Use client's room if not specified
+		// For admin_auth events, use RoomCode instead of QuizID
+		if event.Type == models.EventAdminAuth {
+			roomID = event.RoomCode
+		} else {
+			roomID = client.RoomID // Use client's room if not specified
+		}
 	}
 
 	// Get or create room
@@ -122,7 +127,11 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 		ws.handleCreateRoom(client, event)
 
 	case models.EventAdminAuth:
-		ws.handleAdminAuth(client, event)
+		if room != nil {
+			ws.handleAdminAuth(client, room, event)
+		} else {
+			ws.sendErrorToClient(client, "Room not found")
+		}
 
 	case models.EventJoinTeam:
 		if room != nil {
@@ -258,10 +267,10 @@ func (ws *WebSocketService) handleClick(client *models.Client, room *models.Room
 	player.LastClick = clickTime
 	player.ClickCount++
 
-	// Check for false start
-	if room.Phase != models.PhaseActive || clickTime.Before(room.EnableAt) {
+	// Check for false start - allow clicks in both started and active phases
+	if (room.Phase != models.PhaseStarted && room.Phase != models.PhaseActive) || clickTime.Before(room.EnableAt) {
 		player.FalseStarts++
-		log.Printf("False start by player %s", event.UserID)
+		log.Printf("False start by player %s (phase: %s)", event.UserID, room.Phase)
 	}
 
 	log.Printf("Player %s clicked (total: %d, false starts: %d)",
@@ -277,8 +286,9 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 		return
 	}
 
-	if event.Phase == models.PhaseReady {
-		room.Phase = models.PhaseReady
+	if event.Phase == models.PhaseStarted {
+		// Transition to started phase - players can see button but it's not active yet
+		room.Phase = models.PhaseStarted
 		room.EnableAt = time.Now().Add(time.Duration(event.DelayMs) * time.Millisecond)
 
 		// Send phase changed event
@@ -288,34 +298,25 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 		}
 		ws.broadcastToRoom(room, phaseChangedEvent)
 
-		// Auto-transition to started after delay
-		go func() {
-			time.Sleep(time.Duration(event.DelayMs) * time.Millisecond)
-			room.Mu.Lock()
-			room.Phase = models.PhaseStarted
-			room.Mu.Unlock()
+		// Auto-transition to active after delay (if delay is specified)
+		if event.DelayMs > 0 {
+			go func() {
+				time.Sleep(time.Duration(event.DelayMs) * time.Millisecond)
+				room.Mu.Lock()
+				room.Phase = models.PhaseActive
+				room.Mu.Unlock()
 
-			// Send phase changed event for started phase
-			phaseChangedEvent := models.Event{
-				Type:  models.EventPhaseChanged,
-				Phase: models.PhaseStarted,
-			}
-			ws.broadcastToRoom(room, phaseChangedEvent)
-			ws.broadcastRoomState(room)
-		}()
-	} else if event.Phase == models.PhaseStarted {
-		// Direct transition to started phase
-		room.Phase = models.PhaseStarted
-		room.EnableAt = time.Now()
-
-		// Send phase changed event
-		phaseChangedEvent := models.Event{
-			Type:  models.EventPhaseChanged,
-			Phase: event.Phase,
+				// Send phase changed event for active phase
+				phaseChangedEvent := models.Event{
+					Type:  models.EventPhaseChanged,
+					Phase: models.PhaseActive,
+				}
+				ws.broadcastToRoom(room, phaseChangedEvent)
+				ws.broadcastRoomState(room)
+			}()
 		}
-		ws.broadcastToRoom(room, phaseChangedEvent)
 	} else if event.Phase == models.PhaseActive {
-		// Transition to active phase - players can now click
+		// Direct transition to active phase - players can now click
 		room.Phase = models.PhaseActive
 		room.EnableAt = time.Now()
 
@@ -422,13 +423,7 @@ func (ws *WebSocketService) handleCreateRoom(client *models.Client, event models
 }
 
 // handleAdminAuth processes admin authentication
-func (ws *WebSocketService) handleAdminAuth(client *models.Client, event models.Event) {
-	room, exists := ws.hub.Rooms[event.RoomCode]
-	if !exists {
-		ws.sendErrorToClient(client, "Room not found")
-		return
-	}
-
+func (ws *WebSocketService) handleAdminAuth(client *models.Client, room *models.Room, event models.Event) {
 	if room.AdminPassword != event.Password {
 		ws.sendErrorToClient(client, "Invalid admin password")
 		return
