@@ -31,6 +31,17 @@ const (
 	EventJoinTeam     EventType = "join_team"
 	EventCreateTeam   EventType = "create_team"
 	EventAdminAuth    EventType = "admin_auth"
+	// Additional events for better frontend handling
+	EventRoomCreated           EventType = "room_created"
+	EventJoinSuccess           EventType = "join_success"
+	EventJoinError             EventType = "join_error"
+	EventAdminReconnectSuccess EventType = "admin_reconnect_success"
+	EventAdminReconnectError   EventType = "admin_reconnect_error"
+	EventTeamCreated           EventType = "team_created"
+	EventPlayerJoined          EventType = "player_joined"
+	EventPlayerLeft            EventType = "player_left"
+	EventTeamJoined            EventType = "team_joined"
+	EventPhaseChanged          EventType = "phase_changed"
 )
 
 // Player represents a quiz participant

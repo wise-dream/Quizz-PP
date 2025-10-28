@@ -163,7 +163,7 @@ func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room,
 	if room == nil {
 		log.Printf("Room not found for join request: %s", event.QuizID)
 		errorEvent := models.Event{
-			Type:    models.EventError,
+			Type:    models.EventJoinError,
 			Message: "Room not found",
 		}
 		ws.sendEventToClient(client, errorEvent)
@@ -185,12 +185,27 @@ func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room,
 	client.RoomID = room.Code
 	log.Printf("Player %s joined room %s", event.UserID, room.Code)
 
-	// Send success response
+	// Send success response with specific event type
 	successEvent := models.Event{
-		Type: models.EventState,
+		Type: models.EventJoinSuccess,
 		Data: room,
 	}
 	ws.sendEventToClient(client, successEvent)
+
+	// Also send state event for compatibility
+	stateEvent := models.Event{
+		Type: models.EventState,
+		Data: room,
+	}
+	ws.sendEventToClient(client, stateEvent)
+
+	// Broadcast player joined event to all clients in the room
+	playerJoinedEvent := models.Event{
+		Type:   models.EventPlayerJoined,
+		UserID: event.UserID,
+		Data:   player,
+	}
+	ws.broadcastToRoom(room, playerJoinedEvent)
 
 	// Broadcast to all clients in the room
 	ws.broadcastRoomState(room)
@@ -269,7 +284,28 @@ func (ws *WebSocketService) broadcastRoomState(room *models.Room) {
 
 	// Broadcast to all clients in the room
 	for client := range ws.hub.Clients {
-		if client.RoomID == room.ID {
+		if client.RoomID == room.Code {
+			select {
+			case client.Send <- message:
+			default:
+				close(client.Send)
+				delete(ws.hub.Clients, client)
+			}
+		}
+	}
+}
+
+// broadcastToRoom sends an event to all clients in a specific room
+func (ws *WebSocketService) broadcastToRoom(room *models.Room, event models.Event) {
+	message, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("Error marshaling event: %v", err)
+		return
+	}
+
+	// Broadcast to all clients in the room
+	for client := range ws.hub.Clients {
+		if client.RoomID == room.Code {
 			select {
 			case client.Send <- message:
 			default:
@@ -301,14 +337,21 @@ func (ws *WebSocketService) handleCreateRoom(client *models.Client, event models
 
 	log.Printf("Room created: %s, Admin password: %s", roomCode, adminPassword)
 
-	// Send room creation response
+	// Send room creation response with specific event type
 	response := models.Event{
-		Type:       models.EventState,
+		Type:       models.EventRoomCreated,
 		Data:       room,
 		AdminToken: adminPassword,
 	}
 
 	ws.sendEventToClient(client, response)
+
+	// Also send state event for compatibility
+	stateResponse := models.Event{
+		Type: models.EventState,
+		Data: room,
+	}
+	ws.sendEventToClient(client, stateResponse)
 
 	// Also broadcast to all clients in the room
 	ws.broadcastRoomState(room)
@@ -365,6 +408,16 @@ func (ws *WebSocketService) handleJoinTeam(client *models.Client, room *models.R
 		// Add to new team
 		team.Players = append(team.Players, event.UserID)
 		log.Printf("Player %s joined team %s", event.Nickname, team.Name)
+
+		// Send team joined event to all clients in the room
+		teamJoinedEvent := models.Event{
+			Type:     models.EventTeamJoined,
+			UserID:   event.UserID,
+			TeamID:   event.TeamID,
+			TeamName: team.Name,
+			Data:     player,
+		}
+		ws.broadcastToRoom(room, teamJoinedEvent)
 	}
 
 	ws.broadcastRoomState(room)
@@ -389,6 +442,18 @@ func (ws *WebSocketService) handleCreateTeam(client *models.Client, room *models
 
 	room.Teams[teamID] = team
 	log.Printf("Team created: %s (%s)", event.TeamName, teamID)
+
+	// Send team created event to all clients in the room
+	teamCreatedEvent := models.Event{
+		Type:      models.EventTeamCreated,
+		TeamID:    teamID,
+		TeamName:  event.TeamName,
+		TeamColor: event.TeamColor,
+		Data:      team,
+	}
+	ws.broadcastToRoom(room, teamCreatedEvent)
+
+	// Also broadcast room state
 	ws.broadcastRoomState(room)
 }
 

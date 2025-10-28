@@ -97,6 +97,18 @@ export const useQuiz = () => {
             console.log('🏠 [useQuiz] Room created:', room);
             dispatch(setRoom(room));
             
+            // Set admin user data
+            if (event.adminToken) {
+              const adminUser = {
+                id: `admin_${Date.now()}`,
+                nickname: state.adminData?.name || 'Admin',
+                role: 'admin' as const,
+                roomCode: room.code
+              };
+              dispatch(setUser(adminUser));
+              console.log('👤 [useQuiz] Set admin user:', adminUser);
+            }
+            
             // Save room data to localStorage for reconnection
             localStorage.setItem('quiz_room_data', JSON.stringify(room));
             console.log('💾 [useQuiz] Saved room data to localStorage:', room);
@@ -104,6 +116,16 @@ export const useQuiz = () => {
             const room = event.data as any;
             console.log('✅ [useQuiz] Join successful:', room);
             dispatch(setRoom(room));
+            
+            // Set participant user data
+            const participantUser = {
+              id: event.userId || `user_${Date.now()}`,
+              nickname: event.nickname || 'Participant',
+              role: 'participant' as const,
+              roomCode: room.code
+            };
+            dispatch(setUser(participantUser));
+            console.log('👤 [useQuiz] Set participant user:', participantUser);
             
             // Save room data to localStorage for reconnection
             localStorage.setItem('quiz_room_data', JSON.stringify(room));
