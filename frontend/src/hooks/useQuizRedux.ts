@@ -105,7 +105,7 @@ export const useQuiz = () => {
         
         setTimeout(() => {
           console.log('🔄 [useQuiz] Sending admin reconnect event:', reconnectEvent);
-          ws.send(JSON.stringify(reconnectEvent));
+          ws.send(reconnectEvent);
         }, 1000); // Wait a bit for connection to stabilize
       }
       
@@ -114,7 +114,7 @@ export const useQuiz = () => {
       console.error('❌ [useQuiz] Failed to connect to WebSocket:', error);
       dispatch(setError('Failed to connect to server'));
     }
-  }, [dispatch]);
+  }, [dispatch, state.adminData, state.isAdmin, state.room]);
 
   const disconnectWebSocket = useCallback(() => {
     console.log('🔌 [useQuiz] disconnect() called');

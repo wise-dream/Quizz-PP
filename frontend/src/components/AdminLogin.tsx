@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useQuiz } from '../hooks/useQuizRedux';
 import { cn } from '../utils';
 
 interface AdminLoginProps {
