@@ -13,6 +13,10 @@
     button {padding:8px 12px;margin:6px 6px 0 0;border:1px solid #ccc;border-radius:4px;background:#fff;cursor:pointer}
     button:hover {background:#f5f5f5}
     button:disabled {opacity:0.6;cursor:not-allowed}
+    button.activate {background:#dc3545;color:white;border-color:#dc3545}
+    button.activate:hover {background:#c82333}
+    button.deactivate {background:#28a745;color:white;border-color:#28a745}
+    button.deactivate:hover {background:#218838}
     .row {margin:8px 0}
     .status {margin:8px 0;padding:4px 8px;border-radius:4px}
     .status.connected {background:#d4edda;color:#155724}
@@ -23,6 +27,12 @@
     .players-list {margin:8px 0;max-height:200px;overflow-y:auto;border:1px solid #ddd;border-radius:4px}
     .player-item {padding:4px 8px;border-bottom:1px solid #eee;display:flex;justify-content:space-between}
     .player-item:last-child {border-bottom:none}
+    .quiz-controls {margin:12px 0;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #dee2e6}
+    .quiz-controls h3 {margin:0 0 8px 0;font-size:16px;color:#495057}
+    .timer-input {width:60px}
+    .api-status {margin:8px 0;padding:4px 8px;border-radius:4px;font-size:12px}
+    .api-status.success {background:#d4edda;color:#155724}
+    .api-status.error {background:#f8d7da;color:#721c24}
   </style>
 </head>
 <body>
@@ -32,6 +42,21 @@
     <div id="status" class="status disconnected">—</div>
   </div>
   
+  <!-- Quiz Controls -->
+  <div class="quiz-controls">
+    <h3>🎯 Управление квизом</h3>
+    <div class="row">
+      <label>Таймер (сек):</label>
+      <input id="timer" type="number" value="30" min="0" max="300" class="timer-input">
+      <span style="font-size:12px;color:#666;">0 = без таймера</span>
+    </div>
+    <div class="row">
+      <button id="activate-question" class="activate">🔴 Активировать кнопку</button>
+      <button id="deactivate-question" class="deactivate">🟢 Деактивировать кнопку</button>
+    </div>
+    <div id="api-status" class="api-status" style="display:none"></div>
+  </div>
+
   <div class="row">
     <button data-act="ready" data-delay="3000">Ready 3s</button>
     <button data-act="start">Start now</button>
@@ -59,10 +84,104 @@
   const $enableTime = document.getElementById('enable-time');
   const $playersList = document.getElementById('players-list');
   const $playersContent = document.getElementById('players-content');
+  const $timer = document.getElementById('timer');
+  const $activateBtn = document.getElementById('activate-question');
+  const $deactivateBtn = document.getElementById('deactivate-question');
+  const $apiStatus = document.getElementById('api-status');
+
+  // API Configuration
+  const API_BASE_URL = 'https://wise-dream.ru'; // Change this to your server URL
 
   function updateStatus(text, className) {
     $status.textContent = text;
     $status.className = `status ${className}`;
+  }
+
+  function showApiStatus(message, isSuccess = true) {
+    $apiStatus.textContent = message;
+    $apiStatus.className = `api-status ${isSuccess ? 'success' : 'error'}`;
+    $apiStatus.style.display = 'block';
+    
+    // Hide after 3 seconds
+    setTimeout(() => {
+      $apiStatus.style.display = 'none';
+    }, 3000);
+  }
+
+  async function activateQuestion() {
+    const roomCode = $room.value.trim();
+    const duration = parseInt($timer.value) || 0;
+    
+    if (!roomCode) {
+      showApiStatus('Введите код комнаты!', false);
+      return;
+    }
+
+    try {
+      $activateBtn.disabled = true;
+      $activateBtn.textContent = '⏳ Активация...';
+      
+      const response = await fetch(`${API_BASE_URL}/api/activate-question`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomCode: roomCode,
+          duration: duration
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        showApiStatus(`✅ Кнопка активирована! ${duration > 0 ? `(таймер: ${duration}с)` : ''}`);
+      } else {
+        showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
+      }
+    } catch (error) {
+      showApiStatus(`❌ Ошибка сети: ${error.message}`, false);
+    } finally {
+      $activateBtn.disabled = false;
+      $activateBtn.textContent = '🔴 Активировать кнопку';
+    }
+  }
+
+  async function deactivateQuestion() {
+    const roomCode = $room.value.trim();
+    
+    if (!roomCode) {
+      showApiStatus('Введите код комнаты!', false);
+      return;
+    }
+
+    try {
+      $deactivateBtn.disabled = true;
+      $deactivateBtn.textContent = '⏳ Деактивация...';
+      
+      const response = await fetch(`${API_BASE_URL}/api/deactivate-question`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomCode: roomCode
+        })
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        showApiStatus('✅ Кнопка деактивирована!');
+      } else {
+        showApiStatus(`❌ Ошибка: ${result.message || 'Неизвестная ошибка'}`, false);
+      }
+    } catch (error) {
+      showApiStatus(`❌ Ошибка сети: ${error.message}`, false);
+    } finally {
+      $deactivateBtn.disabled = false;
+      $deactivateBtn.textContent = '🟢 Деактивировать кнопку';
+    }
   }
 
   function openWs() {
@@ -109,7 +228,10 @@
     }
   }
 
+  // Event listeners
   document.getElementById('connect').onclick = openWs;
+  $activateBtn.onclick = activateQuestion;
+  $deactivateBtn.onclick = deactivateQuestion;
 
   document.body.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-act]');

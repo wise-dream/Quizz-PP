@@ -31,7 +31,7 @@
 <script>
 (() => {
   const room = new URLSearchParams(location.search).get('room') || 'R1';
-  const wsUrl = `wss://your-domain.com/ws?room=${encodeURIComponent(room)}&role=viewer`;
+  const wsUrl = `wss://wise-dream.ru/quiz/ws?room=${encodeURIComponent(room)}&role=viewer`;
   let ws, state = { phase: 'lobby', enableAt: 0, players: [] };
 
   const $status = document.getElementById('status');
@@ -105,4 +105,3 @@
 </script>
 </body>
 </html>
-

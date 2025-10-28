@@ -62,6 +62,9 @@ export interface Room {
   firstAnswerer: string;
   correctAnswer: string;
   questionStartTime: string;
+  // Timer fields
+  questionDuration?: number; // Duration in seconds
+  timeRemaining?: number;   // Time remaining in seconds
 }
 
 export interface Event {

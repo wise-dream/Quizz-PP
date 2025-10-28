@@ -1,14 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { teamColors, getTeamColor, cn } from '../utils';
-import { Plus, Users, Play, Pause, Square, Settings, LogOut, Circle, Eye, ArrowRight } from 'lucide-react';
+import { Plus, Users, Play, Square, Settings, LogOut } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
-  const { room, user, createTeam, setGamePhase, error, isConnected, leaveRoom, startQuestion, showAnswer, nextQuestion } = useQuiz();
+  const { room, user, createTeam, setGamePhase, error, isConnected, leaveRoom } = useQuiz();
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(teamColors[0].value);
-  const [correctAnswer, setCorrectAnswer] = useState('');
 
   // All hooks must be called before any conditional returns
   const handleCreateTeam = useCallback(() => {
@@ -30,23 +29,6 @@ export const AdminPanel: React.FC = () => {
   const handleTeamColorChange = useCallback((color: string) => {
     setNewTeamColor(color);
   }, []);
-
-  const handleStartQuestion = useCallback(() => {
-    if (!correctAnswer.trim()) {
-      alert('Введите правильный ответ');
-      return;
-    }
-    startQuestion(correctAnswer);
-  }, [startQuestion, correctAnswer]);
-
-  const handleShowAnswer = useCallback(() => {
-    showAnswer();
-  }, [showAnswer]);
-
-  const handleNextQuestion = useCallback(() => {
-    nextQuestion();
-    setCorrectAnswer(''); // Clear the answer input
-  }, [nextQuestion]);
 
   const getPhaseButton = useCallback((phase: string, label: string, icon: React.ReactNode, color: string) => (
     <button
@@ -214,93 +196,6 @@ export const AdminPanel: React.FC = () => {
               <p className="text-sm text-blue-800">
                 Текущая фаза: <span className="font-semibold">{room.phase}</span>
               </p>
-            </div>
-          </div>
-
-          {/* Quiz Management */}
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Circle className="w-5 h-5" />
-              Управление квизом
-            </h2>
-            
-            {/* Question Input */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Правильный ответ
-              </label>
-              <input
-                type="text"
-                value={correctAnswer}
-                onChange={(e) => setCorrectAnswer(e.target.value)}
-                placeholder="Введите правильный ответ..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Quiz Controls */}
-            <div className="space-y-3">
-              <button
-                onClick={handleStartQuestion}
-                disabled={!correctAnswer.trim() || room?.questionActive}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors',
-                  'bg-red-600 hover:bg-red-700 text-white',
-                  'disabled:bg-gray-400 disabled:cursor-not-allowed',
-                  'focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2'
-                )}
-              >
-                <Circle className="w-5 h-5" />
-                {room?.questionActive ? 'Вопрос активен' : 'Начать вопрос'}
-              </button>
-
-              {room?.firstAnswerer && (
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    Первый ответ: <span className="font-semibold">{room.firstAnswerer}</span>
-                  </p>
-                </div>
-              )}
-
-              <button
-                onClick={handleShowAnswer}
-                disabled={!room?.firstAnswerer}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
-                  'bg-blue-600 hover:bg-blue-700 text-white',
-                  'disabled:bg-gray-400 disabled:cursor-not-allowed',
-                  'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                )}
-              >
-                <Eye className="w-4 h-4" />
-                Показать ответ
-              </button>
-
-              <button
-                onClick={handleNextQuestion}
-                className={cn(
-                  'w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors',
-                  'bg-green-600 hover:bg-green-700 text-white',
-                  'focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2'
-                )}
-              >
-                <ArrowRight className="w-4 h-4" />
-                Следующий вопрос
-              </button>
-            </div>
-
-            {/* Quiz Status */}
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600">
-                Статус: <span className="font-semibold">
-                  {room?.questionActive ? 'Вопрос активен' : 'Ожидание'}
-                </span>
-              </p>
-              {room?.correctAnswer && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Правильный ответ: <span className="font-semibold">{room.correctAnswer}</span>
-                </p>
-              )}
             </div>
           </div>
 

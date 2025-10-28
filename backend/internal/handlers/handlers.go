@@ -14,6 +14,19 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// ActivateQuestionRequest represents a request to activate a question
+type ActivateQuestionRequest struct {
+	RoomCode string `json:"roomCode"`
+	Duration int    `json:"duration"` // Duration in seconds, 0 means no timer
+}
+
+// ActivateQuestionResponse represents the response
+type ActivateQuestionResponse struct {
+	Success  bool   `json:"success"`
+	Message  string `json:"message"`
+	RoomCode string `json:"roomCode,omitempty"`
+}
+
 // WebSocketHandler handles WebSocket connections
 type WebSocketHandler struct {
 	wsService *services.WebSocketService
@@ -190,6 +203,10 @@ func SetupRoutes(wsHandler *WebSocketHandler, staticHandler *StaticHandler) *mux
 	// WebSocket endpoint
 	r.HandleFunc("/ws", wsHandler.ServeWS)
 
+	// PowerPoint integration endpoints
+	r.HandleFunc("/api/activate-question", wsHandler.ActivateQuestion).Methods("POST")
+	r.HandleFunc("/api/deactivate-question", wsHandler.DeactivateQuestion).Methods("POST")
+
 	// Health check endpoint
 	r.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -200,4 +217,110 @@ func SetupRoutes(wsHandler *WebSocketHandler, staticHandler *StaticHandler) *mux
 	r.PathPrefix("/").HandlerFunc(staticHandler.ServeStatic)
 
 	return r
+}
+
+// ActivateQuestion activates the question button for a specific room
+func (h *WebSocketHandler) ActivateQuestion(w http.ResponseWriter, r *http.Request) {
+	var req ActivateQuestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.RoomCode == "" {
+		http.Error(w, "Room code is required", http.StatusBadRequest)
+		return
+	}
+
+	// Find the room
+	room := h.wsService.GetRoom(req.RoomCode)
+	if room == nil {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	// Activate the question
+	room.Mu.Lock()
+	room.QuestionActive = true
+	room.FirstAnswerer = ""
+	room.QuestionStartTime = time.Now()
+	room.Mu.Unlock()
+
+	log.Printf("Question activated for room %s via PowerPoint API", req.RoomCode)
+
+	// Broadcast to all clients in the room
+	questionStartEvent := models.Event{
+		Type: models.EventStartQuestion,
+	}
+	h.wsService.BroadcastToRoom(room, questionStartEvent)
+
+	// If duration is specified, set up auto-deactivation
+	if req.Duration > 0 {
+		go func() {
+			time.Sleep(time.Duration(req.Duration) * time.Second)
+			h.DeactivateQuestionInternal(req.RoomCode)
+		}()
+	}
+
+	// Send response
+	response := ActivateQuestionResponse{
+		Success:  true,
+		Message:  "Question activated successfully",
+		RoomCode: req.RoomCode,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// DeactivateQuestion deactivates the question button for a specific room
+func (h *WebSocketHandler) DeactivateQuestion(w http.ResponseWriter, r *http.Request) {
+	var req ActivateQuestionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.RoomCode == "" {
+		http.Error(w, "Room code is required", http.StatusBadRequest)
+		return
+	}
+
+	success := h.DeactivateQuestionInternal(req.RoomCode)
+	if !success {
+		http.Error(w, "Room not found", http.StatusNotFound)
+		return
+	}
+
+	// Send response
+	response := ActivateQuestionResponse{
+		Success:  true,
+		Message:  "Question deactivated successfully",
+		RoomCode: req.RoomCode,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// DeactivateQuestionInternal is a helper method to deactivate question
+func (h *WebSocketHandler) DeactivateQuestionInternal(roomCode string) bool {
+	room := h.wsService.GetRoom(roomCode)
+	if room == nil {
+		return false
+	}
+
+	room.Mu.Lock()
+	room.QuestionActive = false
+	room.Mu.Unlock()
+
+	log.Printf("Question deactivated for room %s", roomCode)
+
+	// Broadcast to all clients in the room
+	nextQuestionEvent := models.Event{
+		Type: models.EventNextQuestion,
+	}
+	h.wsService.BroadcastToRoom(room, nextQuestionEvent)
+
+	return true
 }

@@ -165,13 +165,11 @@ export const useQuiz = () => {
             }
           } else if (event.type === 'start_question') {
             console.log('❓ [useQuiz] Question started');
-            console.log('❓ [useQuiz] Correct answer:', event.correctAnswer);
             // Update room state with question active
             if (state.room) {
               const updatedRoom = { 
                 ...state.room, 
                 questionActive: true,
-                correctAnswer: event.correctAnswer || '',
                 firstAnswerer: '',
                 questionStartTime: new Date().toISOString()
               };
@@ -180,20 +178,18 @@ export const useQuiz = () => {
           } else if (event.type === 'answer_received') {
             console.log('📝 [useQuiz] Answer received from:', event.userId);
             console.log('📝 [useQuiz] Answer:', event.answer);
-            console.log('📝 [useQuiz] Is correct:', event.isCorrect);
             // Update room state with answer
             if (state.room) {
               const updatedRoom = { 
                 ...state.room, 
                 questionActive: false,
-                firstAnswerer: event.userId || '',
-                correctAnswer: event.correctAnswer || ''
+                firstAnswerer: event.userId || ''
               };
               dispatch(setRoom(updatedRoom));
             }
           } else if (event.type === 'show_answer') {
-            console.log('👁️ [useQuiz] Showing answer:', event.correctAnswer);
-            // Answer is already shown in the room state
+            console.log('👁️ [useQuiz] Showing answer');
+            // Answer is shown in PowerPoint, no need to update state
           } else if (event.type === 'next_question') {
             console.log('➡️ [useQuiz] Next question');
             // Reset question state
@@ -446,13 +442,11 @@ export const useQuiz = () => {
     console.log('✅ [useQuiz] Left room successfully');
   }, [sendEvent, state.user, dispatch]);
 
-  const startQuestion = useCallback((correctAnswer: string) => {
+  const startQuestion = useCallback(() => {
     console.log('❓ [useQuiz] startQuestion() called');
-    console.log('❓ [useQuiz] Correct answer:', correctAnswer);
     
     sendEvent({
       type: 'start_question',
-      correctAnswer,
     });
   }, [sendEvent]);
 

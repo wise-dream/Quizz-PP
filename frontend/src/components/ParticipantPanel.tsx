@@ -1,11 +1,38 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
-import { Users, Zap, Trophy, Clock, LogOut, Circle, CheckCircle, XCircle } from 'lucide-react';
+import { Users, Zap, Trophy, Clock, LogOut, Circle } from 'lucide-react';
 
 export const ParticipantPanel: React.FC = () => {
   const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+
+  // Timer effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (room?.questionActive && room?.questionDuration && room.questionDuration > 0) {
+      setTimeRemaining(room.questionDuration);
+      
+      interval = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    } else {
+      setTimeRemaining(0);
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [room?.questionActive, room?.questionDuration]);
 
   // All hooks must be called before any conditional returns
   const handleJoinTeam = useCallback((teamId: string) => {
@@ -205,6 +232,18 @@ export const ParticipantPanel: React.FC = () => {
                 <p className="text-sm text-gray-600 mb-4">
                   {room?.questionActive ? 'Вопрос активен! Нажмите красную кнопку для ответа' : 'Ожидание вопроса'}
                 </p>
+
+                {/* Timer Display */}
+                {room?.questionActive && timeRemaining > 0 && (
+                  <div className="mb-4 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-100 border border-red-200 rounded-lg">
+                      <Clock className="w-5 h-5 text-red-600" />
+                      <span className="text-lg font-bold text-red-600">
+                        {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Red Answer Button */}
                 <div className="mb-6 text-center">
@@ -232,15 +271,6 @@ export const ParticipantPanel: React.FC = () => {
                   <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
                       Первый ответ получен от: <span className="font-semibold">{room.firstAnswerer}</span>
-                    </p>
-                  </div>
-                )}
-
-                {/* Correct Answer Display */}
-                {room?.correctAnswer && (
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800">
-                      Правильный ответ: <span className="font-semibold">{room.correctAnswer}</span>
                     </p>
                   </div>
                 )}

@@ -642,22 +642,16 @@ func (ws *WebSocketService) handleStartQuestion(client *models.Client, room *mod
 		return
 	}
 
-	// Set correct answer if provided
-	if event.CorrectAnswer != "" {
-		room.CorrectAnswer = event.CorrectAnswer
-	}
-
-	// Start the question
+	// Start the question (no need to set correct answer - it will be handled in PowerPoint)
 	room.QuestionActive = true
 	room.FirstAnswerer = ""
 	room.QuestionStartTime = time.Now()
 
-	log.Printf("Question started in room %s, correct answer: %s", room.Code, room.CorrectAnswer)
+	log.Printf("Question started in room %s", room.Code)
 
 	// Broadcast question start to all clients
 	questionStartEvent := models.Event{
-		Type:          models.EventStartQuestion,
-		CorrectAnswer: room.CorrectAnswer,
+		Type: models.EventStartQuestion,
 	}
 	ws.broadcastToRoom(room, questionStartEvent)
 
@@ -682,18 +676,13 @@ func (ws *WebSocketService) handleAnswerReceived(client *models.Client, room *mo
 	room.FirstAnswerer = event.UserID
 	room.QuestionActive = false // Stop accepting more answers
 
-	// Check if answer is correct
-	isCorrect := event.Answer == room.CorrectAnswer
-
-	log.Printf("First answer received from %s: %s (correct: %v)", event.UserID, event.Answer, isCorrect)
+	log.Printf("First answer received from %s", event.UserID)
 
 	// Broadcast answer received event
 	answerEvent := models.Event{
-		Type:          models.EventAnswerReceived,
-		UserID:        event.UserID,
-		Answer:        event.Answer,
-		IsCorrect:     isCorrect,
-		CorrectAnswer: room.CorrectAnswer,
+		Type:   models.EventAnswerReceived,
+		UserID: event.UserID,
+		Answer: event.Answer,
 	}
 	ws.broadcastToRoom(room, answerEvent)
 
@@ -708,12 +697,11 @@ func (ws *WebSocketService) handleShowAnswer(client *models.Client, room *models
 		return
 	}
 
-	log.Printf("Showing answer in room %s: %s", room.Code, room.CorrectAnswer)
+	log.Printf("Showing answer in room %s", room.Code)
 
 	// Broadcast show answer event
 	showAnswerEvent := models.Event{
-		Type:          models.EventShowAnswer,
-		CorrectAnswer: room.CorrectAnswer,
+		Type: models.EventShowAnswer,
 	}
 	ws.broadcastToRoom(room, showAnswerEvent)
 
@@ -743,6 +731,18 @@ func (ws *WebSocketService) handleNextQuestion(client *models.Client, room *mode
 	ws.broadcastToRoom(room, nextQuestionEvent)
 
 	ws.broadcastRoomState(room)
+}
+
+// GetRoom returns a room by its code
+func (ws *WebSocketService) GetRoom(roomCode string) *models.Room {
+	ws.hub.Mu.RLock()
+	defer ws.hub.Mu.RUnlock()
+	return ws.hub.Rooms[roomCode]
+}
+
+// BroadcastToRoom sends an event to all clients in a specific room
+func (ws *WebSocketService) BroadcastToRoom(room *models.Room, event models.Event) {
+	ws.broadcastToRoom(room, event)
 }
 
 // StartRoomCleanup starts a background goroutine to clean up inactive rooms every 30 minutes

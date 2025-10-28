@@ -8,16 +8,15 @@
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Quiz Content"/>
   <Description DefaultValue="Live scoreboard on slide"/>
-  <IconUrl DefaultValue="https://wise-dream.ru/shared/icon-32.png"/>
+  <IconUrl DefaultValue="https://wise-dream.ru/quiz/addin/icon-32.png"/>
   <SupportUrl DefaultValue="https://wise-dream.ru/help"/>
   <Hosts>
     <Host Name="PowerPoint"/>
   </Hosts>
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://wise-dream.ru/content-addin/content.html"/>
+    <SourceLocation DefaultValue="https://wise-dream.ru/quiz/addin/content.html"/>
     <RequestedWidth>960</RequestedWidth>
     <RequestedHeight>540</RequestedHeight>
   </DefaultSettings>
   <Permissions>ReadWriteDocument</Permissions>
 </OfficeApp>
-
