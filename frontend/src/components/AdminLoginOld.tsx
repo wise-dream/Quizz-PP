@@ -36,7 +36,7 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
     }
   }, [room, onSuccess, isCreating]);
 
-  const handleCreateRoom = () => {
+  const handleCreateRoom = async () => {
     console.log('🏠 [AdminLogin] handleCreateRoom() called');
     console.log('🏠 [AdminLogin] Admin name:', adminName);
     console.log('🏠 [AdminLogin] Admin email:', adminEmail);
@@ -49,13 +49,19 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
     setIsCreating(true);
     setShowAdminForm(false);
     
-    console.log('🏠 [AdminLogin] Calling createRoom...');
-    createRoom(adminName, adminEmail);
-    console.log('🏠 [AdminLogin] createRoom() completed');
-    // Don't call onSuccess here - wait for server response
+    try {
+      console.log('🏠 [AdminLogin] Calling createRoom...');
+      await createRoom(adminName, adminEmail);
+      console.log('🏠 [AdminLogin] createRoom() completed');
+      // Don't call onSuccess here - wait for server response
+    } catch (err) {
+      console.error('❌ [AdminLogin] Failed to create room:', err);
+      setIsCreating(false);
+      setShowAdminForm(true);
+    }
   };
 
-  const handleJoinAsAdmin = () => {
+  const handleJoinAsAdmin = async () => {
     console.log('🔐 [AdminLogin] handleJoinAsAdmin() called');
     console.log('🔐 [AdminLogin] Room code:', roomCode);
     console.log('🔐 [AdminLogin] Password:', password ? '[HIDDEN]' : '[EMPTY]');
@@ -65,10 +71,14 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess, createRoom, a
       return;
     }
     
-    console.log('🔐 [AdminLogin] Calling authenticateAdmin...');
-    authenticateAdmin(roomCode, password);
-    console.log('🔐 [AdminLogin] authenticateAdmin() completed');
-    // Don't call onSuccess here - wait for server response
+    try {
+      console.log('🔐 [AdminLogin] Calling authenticateAdmin...');
+      await authenticateAdmin(roomCode, password);
+      console.log('🔐 [AdminLogin] authenticateAdmin() completed');
+      // Don't call onSuccess here - wait for server response
+    } catch (err) {
+      console.error('❌ [AdminLogin] Failed to authenticate:', err);
+    }
   };
 
   return (
