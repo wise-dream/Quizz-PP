@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useQuiz } from '../hooks/useQuizRedux';
 import { getTeamColor, cn } from '../utils';
-import { Users, Zap, Trophy, Clock, LogOut } from 'lucide-react';
+import { Users, Zap, Trophy, Clock, LogOut, Circle, CheckCircle, XCircle } from 'lucide-react';
 
 export const ParticipantPanel: React.FC = () => {
-  const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom } = useQuiz();
+  const { room, user, joinTeam, sendClick, error, isConnected, leaveRoom, sendAnswer } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
 
   // All hooks must be called before any conditional returns
@@ -16,6 +16,11 @@ export const ParticipantPanel: React.FC = () => {
   const handleClick = useCallback((buttonId: string) => {
     sendClick(buttonId);
   }, [sendClick]);
+
+  const handleAnswer = useCallback((answer: string) => {
+    console.log('📝 [ParticipantPanel] Answer sent:', answer);
+    sendAnswer(answer);
+  }, [sendAnswer]);
 
   const getPhaseStatus = useCallback(() => {
     if (!room?.phase) return { text: 'Неизвестно', color: 'text-gray-600', bg: 'bg-gray-100' };
@@ -198,24 +203,47 @@ export const ParticipantPanel: React.FC = () => {
             {room.phase === 'started' ? (
               <div className="space-y-4">
                 <p className="text-sm text-gray-600 mb-4">
-                  Игра идет! Нажимайте кнопки для ответов
+                  {room?.questionActive ? 'Вопрос активен! Нажмите красную кнопку для ответа' : 'Ожидание вопроса'}
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {['A', 'B', 'C', 'D'].map((button) => (
-                    <button
-                      key={button}
-                      onClick={() => handleClick(button)}
-                      className={cn(
-                        'py-4 px-6 rounded-lg font-bold text-lg transition-colors',
-                        'bg-blue-600 hover:bg-blue-700 text-white',
-                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
-                        'active:scale-95 transform'
-                      )}
-                    >
-                      {button}
-                    </button>
-                  ))}
+                
+                {/* Red Answer Button */}
+                <div className="mb-6 text-center">
+                  <button
+                    onClick={() => handleAnswer('ANSWER')}
+                    disabled={!room?.questionActive}
+                    className={cn(
+                      'w-32 h-32 rounded-full font-bold text-2xl transition-all transform',
+                      'bg-red-600 hover:bg-red-700 text-white',
+                      'disabled:bg-gray-400 disabled:cursor-not-allowed',
+                      'focus:outline-none focus:ring-4 focus:ring-red-300',
+                      'active:scale-95 hover:scale-105',
+                      'shadow-lg hover:shadow-xl'
+                    )}
+                  >
+                    <Circle className="w-16 h-16 mx-auto" />
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {room?.questionActive ? 'Нажмите для ответа' : 'Кнопка заблокирована'}
+                  </p>
                 </div>
+
+                {/* Answer Status */}
+                {room?.firstAnswerer && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      Первый ответ получен от: <span className="font-semibold">{room.firstAnswerer}</span>
+                    </p>
+                  </div>
+                )}
+
+                {/* Correct Answer Display */}
+                {room?.correctAnswer && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800">
+                      Правильный ответ: <span className="font-semibold">{room.correctAnswer}</span>
+                    </p>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">

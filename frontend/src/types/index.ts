@@ -23,7 +23,11 @@ export type EventType =
   | 'player_joined'
   | 'player_left'
   | 'team_joined'
-  | 'phase_changed';
+  | 'phase_changed'
+  | 'start_question'
+  | 'answer_received'
+  | 'show_answer'
+  | 'next_question';
 
 export interface Player {
   id: string;
@@ -53,6 +57,11 @@ export interface Room {
   teams: Record<string, Team>;
   enableAt: string;
   createdAt: string;
+  // Quiz management fields
+  questionActive: boolean;
+  firstAnswerer: string;
+  correctAnswer: string;
+  questionStartTime: string;
 }
 
 export interface Event {
@@ -76,6 +85,11 @@ export interface Event {
   adminToken?: string;
   adminName?: string;
   adminEmail?: string;
+  // Quiz management fields
+  answer?: string;
+  correctAnswer?: string;
+  isCorrect?: boolean;
+  questionActive?: boolean;
 }
 
 export interface WebSocketMessage {

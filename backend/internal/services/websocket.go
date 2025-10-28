@@ -154,6 +154,34 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 			ws.handleHostSetState(client, room, event)
 			room.Mu.Unlock()
 		}
+
+	case models.EventStartQuestion:
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleStartQuestion(client, room, event)
+			room.Mu.Unlock()
+		}
+
+	case models.EventAnswerReceived:
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleAnswerReceived(client, room, event)
+			room.Mu.Unlock()
+		}
+
+	case models.EventShowAnswer:
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleShowAnswer(client, room, event)
+			room.Mu.Unlock()
+		}
+
+	case models.EventNextQuestion:
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleNextQuestion(client, room, event)
+			room.Mu.Unlock()
+		}
 	}
 }
 
@@ -604,6 +632,117 @@ func (ws *WebSocketService) cleanupInactiveRooms() {
 	if len(roomsToDelete) > 0 {
 		log.Printf("Cleaned up %d inactive rooms", len(roomsToDelete))
 	}
+}
+
+// handleStartQuestion processes question start events
+func (ws *WebSocketService) handleStartQuestion(client *models.Client, room *models.Room, event models.Event) {
+	// Only allow admin to start questions
+	if client.Role != "admin" && client.Role != "host" {
+		log.Printf("Non-admin client attempted to start question, role: %s", client.Role)
+		return
+	}
+
+	// Set correct answer if provided
+	if event.CorrectAnswer != "" {
+		room.CorrectAnswer = event.CorrectAnswer
+	}
+
+	// Start the question
+	room.QuestionActive = true
+	room.FirstAnswerer = ""
+	room.QuestionStartTime = time.Now()
+
+	log.Printf("Question started in room %s, correct answer: %s", room.Code, room.CorrectAnswer)
+
+	// Broadcast question start to all clients
+	questionStartEvent := models.Event{
+		Type:          models.EventStartQuestion,
+		CorrectAnswer: room.CorrectAnswer,
+	}
+	ws.broadcastToRoom(room, questionStartEvent)
+
+	ws.broadcastRoomState(room)
+}
+
+// handleAnswerReceived processes answer events from players
+func (ws *WebSocketService) handleAnswerReceived(client *models.Client, room *models.Room, event models.Event) {
+	// Check if question is active
+	if !room.QuestionActive {
+		log.Printf("Question not active, ignoring answer from %s", event.UserID)
+		return
+	}
+
+	// Check if someone already answered
+	if room.FirstAnswerer != "" {
+		log.Printf("Someone already answered, ignoring answer from %s", event.UserID)
+		return
+	}
+
+	// Set first answerer
+	room.FirstAnswerer = event.UserID
+	room.QuestionActive = false // Stop accepting more answers
+
+	// Check if answer is correct
+	isCorrect := event.Answer == room.CorrectAnswer
+
+	log.Printf("First answer received from %s: %s (correct: %v)", event.UserID, event.Answer, isCorrect)
+
+	// Broadcast answer received event
+	answerEvent := models.Event{
+		Type:          models.EventAnswerReceived,
+		UserID:        event.UserID,
+		Answer:        event.Answer,
+		IsCorrect:     isCorrect,
+		CorrectAnswer: room.CorrectAnswer,
+	}
+	ws.broadcastToRoom(room, answerEvent)
+
+	ws.broadcastRoomState(room)
+}
+
+// handleShowAnswer processes show answer events
+func (ws *WebSocketService) handleShowAnswer(client *models.Client, room *models.Room, event models.Event) {
+	// Only allow admin to show answers
+	if client.Role != "admin" && client.Role != "host" {
+		log.Printf("Non-admin client attempted to show answer, role: %s", client.Role)
+		return
+	}
+
+	log.Printf("Showing answer in room %s: %s", room.Code, room.CorrectAnswer)
+
+	// Broadcast show answer event
+	showAnswerEvent := models.Event{
+		Type:          models.EventShowAnswer,
+		CorrectAnswer: room.CorrectAnswer,
+	}
+	ws.broadcastToRoom(room, showAnswerEvent)
+
+	ws.broadcastRoomState(room)
+}
+
+// handleNextQuestion processes next question events
+func (ws *WebSocketService) handleNextQuestion(client *models.Client, room *models.Room, event models.Event) {
+	// Only allow admin to go to next question
+	if client.Role != "admin" && client.Role != "host" {
+		log.Printf("Non-admin client attempted to go to next question, role: %s", client.Role)
+		return
+	}
+
+	// Reset question state
+	room.QuestionActive = false
+	room.FirstAnswerer = ""
+	room.CorrectAnswer = ""
+	room.QuestionStartTime = time.Time{}
+
+	log.Printf("Next question in room %s", room.Code)
+
+	// Broadcast next question event
+	nextQuestionEvent := models.Event{
+		Type: models.EventNextQuestion,
+	}
+	ws.broadcastToRoom(room, nextQuestionEvent)
+
+	ws.broadcastRoomState(room)
 }
 
 // StartRoomCleanup starts a background goroutine to clean up inactive rooms every 30 minutes

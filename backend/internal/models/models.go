@@ -42,6 +42,11 @@ const (
 	EventPlayerLeft            EventType = "player_left"
 	EventTeamJoined            EventType = "team_joined"
 	EventPhaseChanged          EventType = "phase_changed"
+	// Quiz management events
+	EventStartQuestion  EventType = "start_question"
+	EventAnswerReceived EventType = "answer_received"
+	EventShowAnswer     EventType = "show_answer"
+	EventNextQuestion   EventType = "next_question"
 )
 
 // Player represents a quiz participant
@@ -77,7 +82,12 @@ type Room struct {
 	CreatedAt     time.Time          `json:"createdAt"`
 	LastActivity  time.Time          `json:"lastActivity"` // Last activity timestamp
 	AdminPassword string             `json:"-"`            // Not sent to clients
-	Mu            sync.RWMutex
+	// Quiz management fields
+	QuestionActive    bool      `json:"questionActive"`    // Is question currently active
+	FirstAnswerer     string    `json:"firstAnswerer"`     // UserID of first person to answer
+	CorrectAnswer     string    `json:"correctAnswer"`     // The correct answer for current question
+	QuestionStartTime time.Time `json:"questionStartTime"` // When question was started
+	Mu                sync.RWMutex
 }
 
 // Event represents a WebSocket message
@@ -100,6 +110,12 @@ type Event struct {
 	TeamColor  string `json:"teamColor,omitempty"`
 	Password   string `json:"password,omitempty"`
 	AdminToken string `json:"adminToken,omitempty"`
+	AdminName  string `json:"adminName,omitempty"`
+	AdminEmail string `json:"adminEmail,omitempty"`
+	// Quiz management fields
+	Answer        string `json:"answer,omitempty"`        // The answer given by player
+	CorrectAnswer string `json:"correctAnswer,omitempty"` // The correct answer
+	IsCorrect     bool   `json:"isCorrect,omitempty"`     // Whether the answer is correct
 }
 
 // Client represents a WebSocket connection

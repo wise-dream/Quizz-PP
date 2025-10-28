@@ -163,6 +163,50 @@ export const useQuiz = () => {
               dispatch(setRoom(updatedRoom));
               console.log('🔄 [useQuiz] Updated room phase to:', event.phase);
             }
+          } else if (event.type === 'start_question') {
+            console.log('❓ [useQuiz] Question started');
+            console.log('❓ [useQuiz] Correct answer:', event.correctAnswer);
+            // Update room state with question active
+            if (state.room) {
+              const updatedRoom = { 
+                ...state.room, 
+                questionActive: true,
+                correctAnswer: event.correctAnswer || '',
+                firstAnswerer: '',
+                questionStartTime: new Date().toISOString()
+              };
+              dispatch(setRoom(updatedRoom));
+            }
+          } else if (event.type === 'answer_received') {
+            console.log('📝 [useQuiz] Answer received from:', event.userId);
+            console.log('📝 [useQuiz] Answer:', event.answer);
+            console.log('📝 [useQuiz] Is correct:', event.isCorrect);
+            // Update room state with answer
+            if (state.room) {
+              const updatedRoom = { 
+                ...state.room, 
+                questionActive: false,
+                firstAnswerer: event.userId || '',
+                correctAnswer: event.correctAnswer || ''
+              };
+              dispatch(setRoom(updatedRoom));
+            }
+          } else if (event.type === 'show_answer') {
+            console.log('👁️ [useQuiz] Showing answer:', event.correctAnswer);
+            // Answer is already shown in the room state
+          } else if (event.type === 'next_question') {
+            console.log('➡️ [useQuiz] Next question');
+            // Reset question state
+            if (state.room) {
+              const updatedRoom = { 
+                ...state.room, 
+                questionActive: false,
+                firstAnswerer: '',
+                correctAnswer: '',
+                questionStartTime: ''
+              };
+              dispatch(setRoom(updatedRoom));
+            }
           } else {
             console.log('⚠️ [useQuiz] Unknown event type:', event.type);
           }
@@ -402,6 +446,48 @@ export const useQuiz = () => {
     console.log('✅ [useQuiz] Left room successfully');
   }, [sendEvent, state.user, dispatch]);
 
+  const startQuestion = useCallback((correctAnswer: string) => {
+    console.log('❓ [useQuiz] startQuestion() called');
+    console.log('❓ [useQuiz] Correct answer:', correctAnswer);
+    
+    sendEvent({
+      type: 'start_question',
+      correctAnswer,
+    });
+  }, [sendEvent]);
+
+  const sendAnswer = useCallback((answer: string) => {
+    console.log('📝 [useQuiz] sendAnswer() called');
+    console.log('📝 [useQuiz] Answer:', answer);
+    
+    if (!state.user) {
+      console.log('⚠️ [useQuiz] No user to send answer');
+      return;
+    }
+    
+    sendEvent({
+      type: 'answer_received',
+      userId: state.user.id,
+      answer,
+    });
+  }, [sendEvent, state.user]);
+
+  const showAnswer = useCallback(() => {
+    console.log('👁️ [useQuiz] showAnswer() called');
+    
+    sendEvent({
+      type: 'show_answer',
+    });
+  }, [sendEvent]);
+
+  const nextQuestion = useCallback(() => {
+    console.log('➡️ [useQuiz] nextQuestion() called');
+    
+    sendEvent({
+      type: 'next_question',
+    });
+  }, [sendEvent]);
+
   useEffect(() => {
     return () => {
       disconnectWebSocket();
@@ -420,5 +506,9 @@ export const useQuiz = () => {
     setGamePhase,
     sendClick,
     leaveRoom,
+    startQuestion,
+    sendAnswer,
+    showAnswer,
+    nextQuestion,
   };
 };
