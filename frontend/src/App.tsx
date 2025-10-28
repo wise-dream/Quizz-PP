@@ -20,6 +20,13 @@ export const App: React.FC = () => {
 
   useEffect(() => {
     console.log('🚀 [App] useEffect - setting up WebSocket connection');
+    
+    // Only connect if not already connected
+    if (isConnected) {
+      console.log('⚠️ [App] Already connected, skipping connection');
+      return;
+    }
+    
     // 1) берём из env, 2) иначе строим от window.location с правильным путем
     const wsUrl = (() => {
       const fromEnv = process.env.REACT_APP_WS_URL;
@@ -50,7 +57,7 @@ export const App: React.FC = () => {
       console.error('❌ [App] Connection failed:', error);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isConnected]);
 
   // Auto-navigate based on user state
   useEffect(() => {
@@ -87,8 +94,13 @@ export const App: React.FC = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Подключение к серверу...</p>
           <p className="text-sm text-gray-500 mt-2">
-            Если подключение не удается, проверьте, что backend запущен на порту 8081
+            Если подключение не удается, проверьте, что backend запущен
           </p>
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto">
+              <p className="text-red-800 text-sm">{error}</p>
+            </div>
+          )}
         </div>
       </div>
     );

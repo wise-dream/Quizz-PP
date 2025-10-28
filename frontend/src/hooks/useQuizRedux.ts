@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { WebSocketService } from '../services/websocket';
-import { Event, WebSocketMessage } from '../types';
+import { Event, WebSocketMessage, EventType } from '../types';
 import {
   setConnection,
   setWebSocketService,
@@ -49,6 +49,13 @@ export const useQuiz = () => {
 
   const connect = useCallback(async (url: string) => {
     console.log('🚀 [useQuiz] connect() called with URL:', url);
+    
+    // Prevent multiple connections
+    if (wsServiceRef.current && wsServiceRef.current.isConnected()) {
+      console.log('⚠️ [useQuiz] WebSocket already connected, skipping');
+      return;
+    }
+    
     try {
       console.log('🚀 [useQuiz] Creating WebSocket service...');
       const ws = new WebSocketService(url);
@@ -108,6 +115,21 @@ export const useQuiz = () => {
           } else if (event.type === 'admin_reconnect_error') {
             console.log('❌ [useQuiz] Admin reconnection failed:', event.message);
             dispatch(setError(event.message || 'Failed to reconnect as admin'));
+          } else if (event.type === 'team_created') {
+            console.log('👥 [useQuiz] Team created:', event.data);
+            // Room state will be updated by the server
+          } else if (event.type === 'player_joined') {
+            console.log('👤 [useQuiz] Player joined:', event.data);
+            // Room state will be updated by the server
+          } else if (event.type === 'player_left') {
+            console.log('👤 [useQuiz] Player left:', event.data);
+            // Room state will be updated by the server
+          } else if (event.type === 'team_joined') {
+            console.log('👥 [useQuiz] Player joined team:', event.data);
+            // Room state will be updated by the server
+          } else if (event.type === 'phase_changed') {
+            console.log('🔄 [useQuiz] Phase changed:', event.data);
+            // Room state will be updated by the server
           } else {
             console.log('⚠️ [useQuiz] Unknown event type:', event.type);
           }
@@ -117,6 +139,7 @@ export const useQuiz = () => {
         } else if (message.type === 'close') {
           console.log('🔌 [useQuiz] WebSocket connection closed');
           dispatch(setConnection(false));
+          // Don't clear room/user data on disconnect - keep them for reconnection
         } else {
           console.log('⚠️ [useQuiz] Unknown message type:', message.type);
         }

@@ -18,7 +18,12 @@ export type EventType =
   | 'join_error'
   | 'admin_reconnect'
   | 'admin_reconnect_success'
-  | 'admin_reconnect_error';
+  | 'admin_reconnect_error'
+  | 'team_created'
+  | 'player_joined'
+  | 'player_left'
+  | 'team_joined'
+  | 'phase_changed';
 
 export interface Player {
   id: string;

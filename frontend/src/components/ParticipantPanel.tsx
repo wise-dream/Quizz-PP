@@ -4,7 +4,7 @@ import { getTeamColor, cn } from '../utils';
 import { Users, Zap, Trophy, Clock } from 'lucide-react';
 
 export const ParticipantPanel: React.FC = () => {
-  const { room, user, joinTeam, sendClick, error } = useQuiz();
+  const { room, user, joinTeam, sendClick, error, isConnected } = useQuiz();
   const [selectedTeam, setSelectedTeam] = useState<string>('');
 
   if (!room || !user) return null;
@@ -51,6 +51,12 @@ export const ParticipantPanel: React.FC = () => {
               <p className="text-gray-600">
                 Комната: <span className="font-mono font-bold text-blue-600">{room.code}</span>
               </p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-xs text-gray-500">
+                  {isConnected ? 'Подключено' : 'Отключено'}
+                </span>
+              </div>
             </div>
             <div className="text-right">
               <div className={cn('px-3 py-1 rounded-full text-sm font-medium', phaseStatus.bg, phaseStatus.color)}>

@@ -98,7 +98,8 @@ export const quizSlice = createSlice({
       console.log('🔄 [Redux] disconnect');
       state.isConnected = false;
       state.wsService = null;
-      // Keep room, user, isAdmin persistent
+      // Keep room, user, isAdmin persistent - don't clear them on disconnect
+      // This allows for reconnection without losing state
     },
     
     setAdminData: (state, action: PayloadAction<{ name: string; email: string }>) => {

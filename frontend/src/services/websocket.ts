@@ -51,13 +51,16 @@ export class WebSocketService {
             handler({ type: 'close' });
           });
           
-          // Attempt to reconnect
-          if (this.reconnectAttempts < this.maxReconnectAttempts) {
+          // Only attempt to reconnect if it wasn't a clean close (user-initiated)
+          // and if we haven't exceeded max attempts
+          if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
             console.log(`🔄 [WebSocket] Attempting to reconnect (${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
             setTimeout(() => {
               this.reconnectAttempts++;
               this.connect().catch(console.error);
             }, this.reconnectDelay * this.reconnectAttempts);
+          } else if (event.wasClean) {
+            console.log('🔄 [WebSocket] Clean close, not attempting reconnection');
           } else {
             console.log('❌ [WebSocket] Max reconnection attempts reached');
           }

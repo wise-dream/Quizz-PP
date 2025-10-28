@@ -4,7 +4,7 @@ import { teamColors, getTeamColor, cn } from '../utils';
 import { Plus, Users, Play, Pause, Square, Settings } from 'lucide-react';
 
 export const AdminPanel: React.FC = () => {
-  const { room, user, createTeam, setGamePhase, error } = useQuiz();
+  const { room, user, createTeam, setGamePhase, error, isConnected } = useQuiz();
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(teamColors[0].value);
@@ -68,6 +68,12 @@ export const AdminPanel: React.FC = () => {
               <p className="text-gray-600">
                 Комната: <span className="font-mono font-bold text-blue-600">{room.code}</span>
               </p>
+              <div className="flex items-center gap-2 mt-1">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                <span className="text-xs text-gray-500">
+                  {isConnected ? 'Подключено' : 'Отключено'}
+                </span>
+              </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Участников</p>
