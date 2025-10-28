@@ -480,3 +480,61 @@ func GetUpgrader() websocket.Upgrader {
 		},
 	}
 }
+
+// updateRoomActivity updates the last activity timestamp for a room
+func (ws *WebSocketService) updateRoomActivity(room *models.Room) {
+	if room != nil {
+		room.Mu.Lock()
+		room.LastActivity = time.Now()
+		room.Mu.Unlock()
+		log.Printf("Updated activity for room %s", room.Code)
+	}
+}
+
+// cleanupInactiveRooms removes rooms that haven't been active for more than 1 hour
+func (ws *WebSocketService) cleanupInactiveRooms() {
+	ws.hub.Mu.Lock()
+	defer ws.hub.Mu.Unlock()
+
+	cutoffTime := time.Now().Add(-1 * time.Hour)
+	var roomsToDelete []string
+
+	for roomCode, room := range ws.hub.Rooms {
+		room.Mu.RLock()
+		lastActivity := room.LastActivity
+		room.Mu.RUnlock()
+
+		if lastActivity.Before(cutoffTime) {
+			roomsToDelete = append(roomsToDelete, roomCode)
+			log.Printf("Room %s marked for deletion (last activity: %v)", roomCode, lastActivity)
+		}
+	}
+
+	// Delete inactive rooms
+	for _, roomCode := range roomsToDelete {
+		delete(ws.hub.Rooms, roomCode)
+		log.Printf("Deleted inactive room: %s", roomCode)
+	}
+
+	if len(roomsToDelete) > 0 {
+		log.Printf("Cleaned up %d inactive rooms", len(roomsToDelete))
+	}
+}
+
+// StartRoomCleanup starts a background goroutine to clean up inactive rooms every 30 minutes
+func (ws *WebSocketService) StartRoomCleanup() {
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+
+		log.Println("Room cleanup service started (runs every 30 minutes)")
+
+		for {
+			select {
+			case <-ticker.C:
+				log.Println("Running room cleanup...")
+				ws.cleanupInactiveRooms()
+			}
+		}
+	}()
+}

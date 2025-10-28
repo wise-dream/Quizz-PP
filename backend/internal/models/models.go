@@ -64,7 +64,8 @@ type Room struct {
 	Teams         map[string]*Team   `json:"teams"`
 	EnableAt      time.Time          `json:"enableAt"`
 	CreatedAt     time.Time          `json:"createdAt"`
-	AdminPassword string             `json:"-"` // Not sent to clients
+	LastActivity  time.Time          `json:"lastActivity"` // Last activity timestamp
+	AdminPassword string             `json:"-"`            // Not sent to clients
 	Mu            sync.RWMutex
 }
 
