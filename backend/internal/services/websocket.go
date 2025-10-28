@@ -236,9 +236,9 @@ func (ws *WebSocketService) handleClick(client *models.Client, room *models.Room
 
 // handleHostSetState processes host state change events
 func (ws *WebSocketService) handleHostSetState(client *models.Client, room *models.Room, event models.Event) {
-	// Only allow host role to change state
-	if client.Role != "host" {
-		log.Printf("Non-host client attempted to change state")
+	// Only allow admin/host role to change state
+	if client.Role != "admin" && client.Role != "host" {
+		log.Printf("Non-admin client attempted to change state, role: %s", client.Role)
 		return
 	}
 
@@ -246,19 +246,40 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 		room.Phase = models.PhaseReady
 		room.EnableAt = time.Now().Add(time.Duration(event.DelayMs) * time.Millisecond)
 
+		// Send phase changed event
+		phaseChangedEvent := models.Event{
+			Type:  models.EventPhaseChanged,
+			Phase: event.Phase,
+		}
+		ws.broadcastToRoom(room, phaseChangedEvent)
+
 		// Auto-transition to started after delay
 		go func() {
 			time.Sleep(time.Duration(event.DelayMs) * time.Millisecond)
 			room.Mu.Lock()
 			room.Phase = models.PhaseStarted
 			room.Mu.Unlock()
+
+			// Send phase changed event for started phase
+			phaseChangedEvent := models.Event{
+				Type:  models.EventPhaseChanged,
+				Phase: models.PhaseStarted,
+			}
+			ws.broadcastToRoom(room, phaseChangedEvent)
 			ws.broadcastRoomState(room)
 		}()
 	} else {
 		room.Phase = event.Phase
+
+		// Send phase changed event
+		phaseChangedEvent := models.Event{
+			Type:  models.EventPhaseChanged,
+			Phase: event.Phase,
+		}
+		ws.broadcastToRoom(room, phaseChangedEvent)
 	}
 
-	log.Printf("Room %s phase changed to %s by host", room.ID, event.Phase)
+	log.Printf("Room %s phase changed to %s by admin", room.ID, event.Phase)
 	ws.broadcastRoomState(room)
 }
 

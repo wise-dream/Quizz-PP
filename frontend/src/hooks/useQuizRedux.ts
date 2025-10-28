@@ -159,8 +159,13 @@ export const useQuiz = () => {
             console.log('👥 [useQuiz] Player joined team:', event.data);
             // Room state will be updated by the server
           } else if (event.type === 'phase_changed') {
-            console.log('🔄 [useQuiz] Phase changed:', event.data);
-            // Room state will be updated by the server
+            console.log('🔄 [useQuiz] Phase changed:', event.phase);
+            // Update room phase in Redux state
+            if (state.room && event.phase) {
+              const updatedRoom = { ...state.room, phase: event.phase };
+              dispatch(setRoom(updatedRoom));
+              console.log('🔄 [useQuiz] Updated room phase to:', event.phase);
+            }
           } else {
             console.log('⚠️ [useQuiz] Unknown event type:', event.type);
           }
