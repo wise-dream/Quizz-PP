@@ -25,14 +25,28 @@ export class WebSocketService {
         this.ws.onmessage = (event) => {
           console.log('📨 [WebSocket] Message received:', event.data);
           try {
-            const data = JSON.parse(event.data);
-            console.log('📦 [WebSocket] Parsed data:', data);
-            this.messageHandlers.forEach((handler, index) => {
-              console.log(`🔄 [WebSocket] Calling handler ${index}:`, handler);
-              handler({ type: 'message', data });
-            });
+            // Handle multiple JSON messages in one string (separated by newlines)
+            const messages = event.data.split('\n').filter(line => line.trim() !== '');
+            
+            for (const message of messages) {
+              try {
+                const data = JSON.parse(message);
+                console.log('📦 [WebSocket] Parsed data:', data);
+                this.messageHandlers.forEach((handler, index) => {
+                  console.log(`🔄 [WebSocket] Calling handler ${index}:`, handler);
+                  handler({ type: 'message', data });
+                });
+              } catch (parseError) {
+                console.error('❌ [WebSocket] Error parsing individual message:', parseError);
+                console.error('❌ [WebSocket] Raw message:', message);
+                this.messageHandlers.forEach((handler, index) => {
+                  console.log(`🔄 [WebSocket] Calling error handler ${index}:`, handler);
+                  handler({ type: 'error', error: 'Invalid message format' });
+                });
+              }
+            }
           } catch (error) {
-            console.error('❌ [WebSocket] Error parsing message:', error);
+            console.error('❌ [WebSocket] Error processing message:', error);
             console.error('❌ [WebSocket] Raw message:', event.data);
             this.messageHandlers.forEach((handler, index) => {
               console.log(`🔄 [WebSocket] Calling error handler ${index}:`, handler);

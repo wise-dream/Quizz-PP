@@ -192,13 +192,6 @@ func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room,
 	}
 	ws.sendEventToClient(client, successEvent)
 
-	// Also send state event for compatibility
-	stateEvent := models.Event{
-		Type: models.EventState,
-		Data: room,
-	}
-	ws.sendEventToClient(client, stateEvent)
-
 	// Broadcast player joined event to all clients in the room
 	playerJoinedEvent := models.Event{
 		Type:   models.EventPlayerJoined,
@@ -207,7 +200,7 @@ func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room,
 	}
 	ws.broadcastToRoom(room, playerJoinedEvent)
 
-	// Broadcast to all clients in the room
+	// Broadcast to all clients in the room (this will send state event)
 	ws.broadcastRoomState(room)
 }
 
@@ -346,14 +339,7 @@ func (ws *WebSocketService) handleCreateRoom(client *models.Client, event models
 
 	ws.sendEventToClient(client, response)
 
-	// Also send state event for compatibility
-	stateResponse := models.Event{
-		Type: models.EventState,
-		Data: room,
-	}
-	ws.sendEventToClient(client, stateResponse)
-
-	// Also broadcast to all clients in the room
+	// Also broadcast to all clients in the room (this will send state event)
 	ws.broadcastRoomState(room)
 }
 
