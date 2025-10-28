@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { WebSocketService } from '../services/websocket';
 import { QuizState, User, Room, Event, WebSocketMessage } from '../types';
 
@@ -12,6 +12,7 @@ export const useQuiz = () => {
   });
 
   const [wsService, setWsService] = useState<WebSocketService | null>(null);
+  const wsServiceRef = useRef<WebSocketService | null>(null);
 
   const connect = useCallback(async (url: string) => {
     console.log('🚀 [useQuiz] connect() called with URL:', url);
@@ -127,6 +128,7 @@ export const useQuiz = () => {
 
       console.log('🚀 [useQuiz] Setting WebSocket service...');
       setWsService(ws);
+      wsServiceRef.current = ws;
       console.log('🚀 [useQuiz] Updating state - connected');
       setState(prev => ({
         ...prev,
@@ -144,9 +146,12 @@ export const useQuiz = () => {
   }, []);
 
   const disconnect = useCallback(() => {
-    if (wsService) {
-      wsService.disconnect();
+    console.log('🔌 [useQuiz] disconnect() called');
+    if (wsServiceRef.current) {
+      console.log('🔌 [useQuiz] Disconnecting WebSocket service...');
+      wsServiceRef.current.disconnect();
       setWsService(null);
+      wsServiceRef.current = null;
       setState(prev => ({
         ...prev,
         isConnected: false,
@@ -154,16 +159,20 @@ export const useQuiz = () => {
         user: null,
         isAdmin: false,
       }));
+      console.log('✅ [useQuiz] Disconnected successfully');
+    } else {
+      console.log('⚠️ [useQuiz] No WebSocket service to disconnect');
     }
-  }, [wsService]);
+  }, []);
 
   const sendEvent = useCallback((event: Event) => {
     console.log('📤 [useQuiz] sendEvent() called');
     console.log('📤 [useQuiz] Event to send:', event);
     console.log('📤 [useQuiz] Event type:', event.type);
+    console.log('📤 [useQuiz] wsServiceRef.current:', wsServiceRef.current);
     
-    if (!wsService) {
-      console.error('❌ [useQuiz] WebSocket service not available');
+    if (!wsServiceRef.current) {
+      console.error('❌ [useQuiz] WebSocket service not available in ref');
       setState(prev => ({
         ...prev,
         error: 'WebSocket сервис недоступен. Перезагрузите страницу.',
@@ -171,8 +180,8 @@ export const useQuiz = () => {
       return;
     }
     
-    console.log('📤 [useQuiz] WebSocket service available, checking connection...');
-    if (!wsService.isConnected()) {
+    console.log('📤 [useQuiz] WebSocket service available in ref, checking connection...');
+    if (!wsServiceRef.current.isConnected()) {
       console.error('❌ [useQuiz] WebSocket is not connected');
       setState(prev => ({
         ...prev,
@@ -183,7 +192,7 @@ export const useQuiz = () => {
     
     console.log('📤 [useQuiz] WebSocket is connected, sending event...');
     try {
-      wsService.send(event);
+      wsServiceRef.current.send(event);
       console.log('✅ [useQuiz] Event sent successfully:', event);
     } catch (error) {
       console.error('❌ [useQuiz] Error sending event:', error);
@@ -192,26 +201,26 @@ export const useQuiz = () => {
         error: 'Ошибка отправки сообщения: ' + error,
       }));
     }
-  }, [wsService]);
+  }, []);
 
   const createRoom = useCallback(() => {
     console.log('🏠 [useQuiz] createRoom() called');
-    console.log('🏠 [useQuiz] Current wsService:', wsService);
-    console.log('🏠 [useQuiz] wsService isConnected:', wsService?.isConnected());
+    console.log('🏠 [useQuiz] wsServiceRef.current:', wsServiceRef.current);
+    console.log('🏠 [useQuiz] wsServiceRef.current isConnected:', wsServiceRef.current?.isConnected());
     
     const event = {
       type: 'create_room' as const,
     };
     console.log('🏠 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent, wsService]);
+  }, [sendEvent]);
 
   const joinRoom = useCallback((roomCode: string, nickname: string) => {
     console.log('🚪 [useQuiz] joinRoom() called');
     console.log('🚪 [useQuiz] Room code:', roomCode);
     console.log('🚪 [useQuiz] Nickname:', nickname);
-    console.log('🚪 [useQuiz] Current wsService:', wsService);
-    console.log('🚪 [useQuiz] wsService isConnected:', wsService?.isConnected());
+    console.log('🚪 [useQuiz] wsServiceRef.current:', wsServiceRef.current);
+    console.log('🚪 [useQuiz] wsServiceRef.current isConnected:', wsServiceRef.current?.isConnected());
     
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log('🚪 [useQuiz] Generated user ID:', userId);
@@ -239,14 +248,14 @@ export const useQuiz = () => {
     };
     console.log('🚪 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent, wsService]);
+  }, [sendEvent]);
 
   const authenticateAdmin = useCallback((roomCode: string, password: string) => {
     console.log('🔐 [useQuiz] authenticateAdmin() called');
     console.log('🔐 [useQuiz] Room code:', roomCode);
     console.log('🔐 [useQuiz] Password:', password ? '[HIDDEN]' : '[EMPTY]');
-    console.log('🔐 [useQuiz] Current wsService:', wsService);
-    console.log('🔐 [useQuiz] wsService isConnected:', wsService?.isConnected());
+    console.log('🔐 [useQuiz] wsServiceRef.current:', wsServiceRef.current);
+    console.log('🔐 [useQuiz] wsServiceRef.current isConnected:', wsServiceRef.current?.isConnected());
     
     const userId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log('🔐 [useQuiz] Generated admin user ID:', userId);
@@ -269,7 +278,7 @@ export const useQuiz = () => {
     };
     console.log('🔐 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent, wsService]);
+  }, [sendEvent]);
 
   const joinTeam = useCallback((teamId: string) => {
     if (!state.user) return;
