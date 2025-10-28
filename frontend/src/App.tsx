@@ -9,8 +9,14 @@ import { useQuiz } from './hooks/useQuiz';
 type AppMode = 'select' | 'admin-login' | 'participant-login' | 'admin-panel' | 'participant-panel' | 'websocket-test';
 
 export const App: React.FC = () => {
+  console.log('🔄 [App] App component render started');
+  
   const [mode, setMode] = useState<AppMode>('select');
   const { connect, isConnected, user } = useQuiz();
+  
+  console.log('🔄 [App] Current mode:', mode);
+  console.log('🔄 [App] Current isConnected:', isConnected);
+  console.log('🔄 [App] Current user:', user);
 
   useEffect(() => {
     console.log('🚀 [App] useEffect - setting up WebSocket connection');

@@ -7,10 +7,16 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
+  console.log('🔄 [AdminLogin] AdminLogin component render started');
+  
   const { createRoom, authenticateAdmin, error, room, user } = useQuiz();
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [password, setPassword] = useState('');
+  
+  console.log('🔄 [AdminLogin] Current error:', error);
+  console.log('🔄 [AdminLogin] Current room:', room);
+  console.log('🔄 [AdminLogin] Current user:', user);
 
   // Watch for successful room creation
   useEffect(() => {

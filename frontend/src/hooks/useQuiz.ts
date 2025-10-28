@@ -3,6 +3,8 @@ import { WebSocketService } from '../services/websocket';
 import { QuizState, User, Room, Event, WebSocketMessage } from '../types';
 
 export const useQuiz = () => {
+  console.log('🔄 [useQuiz] Hook render started');
+  
   const [state, setState] = useState<QuizState>({
     room: null,
     user: null,
@@ -13,6 +15,10 @@ export const useQuiz = () => {
 
   const [wsService, setWsService] = useState<WebSocketService | null>(null);
   const wsServiceRef = useRef<WebSocketService | null>(null);
+  
+  console.log('🔄 [useQuiz] Current state:', state);
+  console.log('🔄 [useQuiz] Current wsService state:', wsService);
+  console.log('🔄 [useQuiz] Current wsServiceRef.current:', wsServiceRef.current);
 
   const connect = useCallback(async (url: string) => {
     console.log('🚀 [useQuiz] connect() called with URL:', url);
@@ -133,11 +139,16 @@ export const useQuiz = () => {
       console.log('🚀 [useQuiz] wsServiceRef.current after setting:', wsServiceRef.current);
       console.log('🚀 [useQuiz] wsServiceRef.current isConnected:', wsServiceRef.current?.isConnected());
       console.log('🚀 [useQuiz] Updating state - connected');
-      setState(prev => ({
-        ...prev,
-        isConnected: true,
-        error: null,
-      }));
+      setState(prev => {
+        console.log('🔄 [useQuiz] setState called with prev state:', prev);
+        const newState = {
+          ...prev,
+          isConnected: true,
+          error: null,
+        };
+        console.log('🔄 [useQuiz] setState new state:', newState);
+        return newState;
+      });
       console.log('✅ [useQuiz] Connection setup complete');
     } catch (error) {
       console.error('❌ [useQuiz] Failed to connect to WebSocket:', error);
@@ -150,11 +161,15 @@ export const useQuiz = () => {
 
   const disconnect = useCallback(() => {
     console.log('🔌 [useQuiz] disconnect() called');
+    console.log('🔌 [useQuiz] wsServiceRef.current before disconnect:', wsServiceRef.current);
+    console.log('🔌 [useQuiz] wsService state before disconnect:', wsService);
+    
     if (wsServiceRef.current) {
       console.log('🔌 [useQuiz] Disconnecting WebSocket service...');
       wsServiceRef.current.disconnect();
       setWsService(null);
       wsServiceRef.current = null;
+      console.log('🔌 [useQuiz] After setting to null - wsServiceRef.current:', wsServiceRef.current);
       setState(prev => ({
         ...prev,
         isConnected: false,
@@ -329,7 +344,9 @@ export const useQuiz = () => {
   }, [sendEvent, state.user]);
 
   useEffect(() => {
+    console.log('🔄 [useQuiz] useEffect cleanup - disconnect called');
     return () => {
+      console.log('🔄 [useQuiz] useEffect cleanup - calling disconnect');
       disconnect();
     };
   }, [disconnect]);
