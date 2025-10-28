@@ -196,17 +196,22 @@ export const useQuiz = () => {
 
   const createRoom = useCallback(() => {
     console.log('🏠 [useQuiz] createRoom() called');
+    console.log('🏠 [useQuiz] Current wsService:', wsService);
+    console.log('🏠 [useQuiz] wsService isConnected:', wsService?.isConnected());
+    
     const event = {
       type: 'create_room' as const,
     };
     console.log('🏠 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent]);
+  }, [sendEvent, wsService]);
 
   const joinRoom = useCallback((roomCode: string, nickname: string) => {
     console.log('🚪 [useQuiz] joinRoom() called');
     console.log('🚪 [useQuiz] Room code:', roomCode);
     console.log('🚪 [useQuiz] Nickname:', nickname);
+    console.log('🚪 [useQuiz] Current wsService:', wsService);
+    console.log('🚪 [useQuiz] wsService isConnected:', wsService?.isConnected());
     
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     console.log('🚪 [useQuiz] Generated user ID:', userId);
@@ -234,10 +239,17 @@ export const useQuiz = () => {
     };
     console.log('🚪 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent]);
+  }, [sendEvent, wsService]);
 
   const authenticateAdmin = useCallback((roomCode: string, password: string) => {
+    console.log('🔐 [useQuiz] authenticateAdmin() called');
+    console.log('🔐 [useQuiz] Room code:', roomCode);
+    console.log('🔐 [useQuiz] Password:', password ? '[HIDDEN]' : '[EMPTY]');
+    console.log('🔐 [useQuiz] Current wsService:', wsService);
+    console.log('🔐 [useQuiz] wsService isConnected:', wsService?.isConnected());
+    
     const userId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log('🔐 [useQuiz] Generated admin user ID:', userId);
     
     setState(prev => ({
       ...prev,
@@ -250,12 +262,14 @@ export const useQuiz = () => {
       isAdmin: true,
     }));
 
-    sendEvent({
-      type: 'admin_auth',
+    const event = {
+      type: 'admin_auth' as const,
       roomCode,
       password,
-    });
-  }, [sendEvent]);
+    };
+    console.log('🔐 [useQuiz] Calling sendEvent with:', event);
+    sendEvent(event);
+  }, [sendEvent, wsService]);
 
   const joinTeam = useCallback((teamId: string) => {
     if (!state.user) return;
