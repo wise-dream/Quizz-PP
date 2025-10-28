@@ -83,11 +83,21 @@ export const App: React.FC = () => {
 
   // Handle returning to select mode when user leaves
   useEffect(() => {
+    console.log('🔄 [App] Checking if should return to select mode...');
+    console.log('🔄 [App] User:', user);
+    console.log('🔄 [App] Room:', room);
+    console.log('🔄 [App] Mode:', mode);
+    
     if (!user && !room && mode !== 'select') {
       console.log('🔄 [App] User left room, returning to select mode');
       setMode('select');
     }
-  }, [user, room, mode]);
+  }, [user, room]); // Убрали mode из зависимостей
+
+  // Log mode changes
+  useEffect(() => {
+    console.log('🔄 [App] Mode changed to:', mode);
+  }, [mode]);
 
   const handleAdminSuccess = useCallback(() => {
     console.log('✅ [App] handleAdminSuccess() called');
@@ -99,17 +109,25 @@ export const App: React.FC = () => {
     setMode('participant-panel');
   }, []);
 
-  const handleAdminClick = useCallback(() => {
-    console.log('🔵 [App] Admin button clicked');
+  const handleAdminClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('🔵 [App] Admin button clicked - BEFORE setMode');
+    console.log('🔵 [App] Current mode before:', mode);
     setMode('admin-login');
-  }, []);
+    console.log('🔵 [App] Admin button clicked - AFTER setMode');
+  }, []); // Убрали mode из зависимостей
 
-  const handleParticipantClick = useCallback(() => {
+  const handleParticipantClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('🟢 [App] Participant button clicked');
     setMode('participant-login');
   }, []);
 
-  const handleWebSocketTestClick = useCallback(() => {
+  const handleWebSocketTestClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('🟣 [App] WebSocket test button clicked');
     setMode('websocket-test');
   }, []);
@@ -152,6 +170,8 @@ export const App: React.FC = () => {
           <button
             type="button"
             onClick={handleAdminClick}
+            onMouseDown={() => console.log('🔵 [App] Admin button mousedown')}
+            onMouseUp={() => console.log('🔵 [App] Admin button mouseup')}
             className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Я организатор
