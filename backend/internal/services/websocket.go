@@ -102,18 +102,20 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 
 	// Get or create room
 	room, exists := ws.hub.Rooms[roomID]
-	if !exists {
+	if !exists && event.Type != models.EventCreateRoom {
+		// For non-create-room events, check if room exists
+		room = nil
+	} else if !exists {
+		// Only create room for create_room events
 		room = &models.Room{
 			ID:        roomID,
 			Phase:     models.PhaseLobby,
 			Players:   make(map[string]*models.Player),
+			Teams:     make(map[string]*models.Team),
 			CreatedAt: time.Now(),
 		}
 		ws.hub.Rooms[roomID] = room
 	}
-
-	room.Mu.Lock()
-	defer room.Mu.Unlock()
 
 	switch event.Type {
 	case models.EventCreateRoom:
@@ -123,34 +125,74 @@ func (ws *WebSocketService) HandleEvent(client *models.Client, event models.Even
 		ws.handleAdminAuth(client, event)
 
 	case models.EventJoinTeam:
-		ws.handleJoinTeam(client, room, event)
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleJoinTeam(client, room, event)
+			room.Mu.Unlock()
+		}
 
 	case models.EventCreateTeam:
-		ws.handleCreateTeam(client, room, event)
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleCreateTeam(client, room, event)
+			room.Mu.Unlock()
+		}
 
 	case models.EventJoin:
 		ws.handleJoin(client, room, event)
 
 	case models.EventClick:
-		ws.handleClick(client, room, event)
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleClick(client, room, event)
+			room.Mu.Unlock()
+		}
 
 	case models.EventHostSetState:
-		ws.handleHostSetState(client, room, event)
+		if room != nil {
+			room.Mu.Lock()
+			ws.handleHostSetState(client, room, event)
+			room.Mu.Unlock()
+		}
 	}
 }
 
 // handleJoin processes player join events
 func (ws *WebSocketService) handleJoin(client *models.Client, room *models.Room, event models.Event) {
+	// Check if room exists
+	if room == nil {
+		log.Printf("Room not found for join request: %s", event.QuizID)
+		errorEvent := models.Event{
+			Type:    models.EventError,
+			Message: "Room not found",
+		}
+		ws.sendEventToClient(client, errorEvent)
+		return
+	}
+
+	room.Mu.Lock()
+	defer room.Mu.Unlock()
+
 	player := &models.Player{
 		ID:        event.UserID,
 		UserID:    event.UserID,
 		ButtonID:  event.ButtonID,
-		Name:      fmt.Sprintf("Player %s", event.UserID),
+		Name:      event.Nickname,
 		Connected: true,
 	}
 	room.Players[event.UserID] = player
 	client.UserID = event.UserID
-	log.Printf("Player %s joined room %s", event.UserID, room.ID)
+	client.RoomID = room.Code
+	log.Printf("Player %s joined room %s", event.UserID, room.Code)
+
+	// Send success response
+	successEvent := models.Event{
+		Type: models.EventState,
+		Data: room,
+	}
+	ws.sendEventToClient(client, successEvent)
+
+	// Broadcast to all clients in the room
 	ws.broadcastRoomState(room)
 }
 
@@ -267,6 +309,9 @@ func (ws *WebSocketService) handleCreateRoom(client *models.Client, event models
 	}
 
 	ws.sendEventToClient(client, response)
+
+	// Also broadcast to all clients in the room
+	ws.broadcastRoomState(room)
 }
 
 // handleAdminAuth processes admin authentication

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuiz } from '../hooks/useQuiz';
 import { cn } from '../utils';
 
@@ -7,19 +7,27 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
-  const { createRoom, authenticateAdmin, error } = useQuiz();
+  const { createRoom, authenticateAdmin, error, room, user } = useQuiz();
   const [isCreating, setIsCreating] = useState(false);
   const [roomCode, setRoomCode] = useState('');
   const [password, setPassword] = useState('');
 
+  // Watch for successful room creation
+  useEffect(() => {
+    if (room && user?.role === 'admin' && !isCreating) {
+      console.log('Room created successfully, calling onSuccess');
+      onSuccess();
+    }
+  }, [room, user, onSuccess, isCreating]);
+
   const handleCreateRoom = async () => {
     setIsCreating(true);
     try {
+      console.log('Creating room...');
       await createRoom();
-      onSuccess();
+      // Don't call onSuccess here - wait for server response
     } catch (err) {
       console.error('Failed to create room:', err);
-    } finally {
       setIsCreating(false);
     }
   };
@@ -28,8 +36,9 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onSuccess }) => {
     if (!roomCode || !password) return;
     
     try {
+      console.log('Authenticating admin...');
       await authenticateAdmin(roomCode, password);
-      onSuccess();
+      // Don't call onSuccess here - wait for server response
     } catch (err) {
       console.error('Failed to authenticate:', err);
     }

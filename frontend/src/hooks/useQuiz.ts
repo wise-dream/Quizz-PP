@@ -19,27 +19,74 @@ export const useQuiz = () => {
       await ws.connect();
       
       ws.onMessage((message: WebSocketMessage) => {
+        console.log('Received WebSocket message:', message);
+        
         if (message.type === 'message' && message.data) {
           const event = message.data as Event;
+          console.log('Processing event:', event);
           
           if (event.type === 'state') {
+            const room = event.data as Room;
+            console.log('Room state received:', room);
+            
             setState(prev => ({
               ...prev,
-              room: event.data as Room,
+              room: room,
               error: null,
             }));
           } else if (event.type === 'error') {
+            console.log('Error event received:', event.message);
             setState(prev => ({
               ...prev,
               error: event.message || 'Unknown error',
             }));
+          } else if (event.type === 'room_created') {
+            // Handle room creation response
+            const room = event.data as Room;
+            console.log('Room created:', room);
+            
+            setState(prev => ({
+              ...prev,
+              room: room,
+              user: prev.user ? {
+                ...prev.user,
+                roomCode: room.code,
+                role: 'admin'
+              } : {
+                id: `admin_${Date.now()}`,
+                nickname: 'Admin',
+                role: 'admin',
+                roomCode: room.code
+              },
+              isAdmin: true,
+              error: null,
+            }));
+          } else if (event.type === 'join_success') {
+            // Handle successful join
+            const room = event.data as Room;
+            console.log('Join successful:', room);
+            
+            setState(prev => ({
+              ...prev,
+              room: room,
+              error: null,
+            }));
+          } else if (event.type === 'join_error') {
+            // Handle join error
+            console.log('Join error:', event.message);
+            setState(prev => ({
+              ...prev,
+              error: event.message || 'Failed to join room',
+            }));
           }
         } else if (message.type === 'error') {
+          console.log('WebSocket error:', message.error);
           setState(prev => ({
             ...prev,
             error: message.error || 'Connection error',
           }));
         } else if (message.type === 'close') {
+          console.log('WebSocket connection closed');
           setState(prev => ({
             ...prev,
             isConnected: false,
@@ -54,6 +101,7 @@ export const useQuiz = () => {
         error: null,
       }));
     } catch (error) {
+      console.error('Failed to connect to WebSocket:', error);
       setState(prev => ({
         ...prev,
         error: 'Failed to connect to server',
@@ -82,6 +130,7 @@ export const useQuiz = () => {
   }, [wsService]);
 
   const createRoom = useCallback(() => {
+    console.log('Creating room...');
     sendEvent({
       type: 'create_room',
     });
@@ -89,6 +138,8 @@ export const useQuiz = () => {
 
   const joinRoom = useCallback((roomCode: string, nickname: string) => {
     const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    console.log('Joining room:', roomCode, 'with nickname:', nickname);
     
     setState(prev => ({
       ...prev,

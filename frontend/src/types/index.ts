@@ -12,7 +12,10 @@ export type EventType =
   | 'create_room'
   | 'join_team'
   | 'create_team'
-  | 'admin_auth';
+  | 'admin_auth'
+  | 'room_created'
+  | 'join_success'
+  | 'join_error';
 
 export interface Player {
   id: string;

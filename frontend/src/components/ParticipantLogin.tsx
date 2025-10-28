@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuiz } from '../hooks/useQuiz';
 import { cn } from '../utils';
 
@@ -7,16 +7,25 @@ interface ParticipantLoginProps {
 }
 
 export const ParticipantLogin: React.FC<ParticipantLoginProps> = ({ onSuccess }) => {
-  const { joinRoom, error } = useQuiz();
+  const { joinRoom, error, room, user } = useQuiz();
   const [roomCode, setRoomCode] = useState('');
   const [nickname, setNickname] = useState('');
+
+  // Watch for successful room join
+  useEffect(() => {
+    if (room && user?.role === 'participant') {
+      console.log('Successfully joined room, calling onSuccess');
+      onSuccess();
+    }
+  }, [room, user, onSuccess]);
 
   const handleJoin = async () => {
     if (!roomCode || !nickname) return;
     
     try {
+      console.log('Joining room...');
       await joinRoom(roomCode, nickname);
-      onSuccess();
+      // Don't call onSuccess here - wait for server response
     } catch (err) {
       console.error('Failed to join room:', err);
     }
