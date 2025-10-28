@@ -43,6 +43,10 @@ export const useQuiz = () => {
             const room = event.data as any;
             console.log('🏠 [useQuiz] Room state received:', room);
             dispatch(setRoom(room));
+            
+            // Save room data to localStorage for reconnection
+            localStorage.setItem('quiz_room_data', JSON.stringify(room));
+            console.log('💾 [useQuiz] Saved room data to localStorage:', room);
           } else if (event.type === 'error') {
             console.log('❌ [useQuiz] Error event received:', event.message);
             dispatch(setError(event.message || 'Unknown error'));
@@ -50,10 +54,18 @@ export const useQuiz = () => {
             const room = event.data as any;
             console.log('🏠 [useQuiz] Room created:', room);
             dispatch(setRoom(room));
+            
+            // Save room data to localStorage for reconnection
+            localStorage.setItem('quiz_room_data', JSON.stringify(room));
+            console.log('💾 [useQuiz] Saved room data to localStorage:', room);
           } else if (event.type === 'join_success') {
             const room = event.data as any;
             console.log('✅ [useQuiz] Join successful:', room);
             dispatch(setRoom(room));
+            
+            // Save room data to localStorage for reconnection
+            localStorage.setItem('quiz_room_data', JSON.stringify(room));
+            console.log('💾 [useQuiz] Saved room data to localStorage:', room);
           } else if (event.type === 'join_error') {
             console.log('❌ [useQuiz] Join error:', event.message);
             dispatch(setError(event.message || 'Failed to join room'));
@@ -89,32 +101,49 @@ export const useQuiz = () => {
       dispatch(setWebSocketService(ws));
       dispatch(setConnection(true));
       
-      // If we have a room and admin data, try to reconnect as admin
-      if (state.room && state.adminData && state.isAdmin) {
-        console.log('🔄 [useQuiz] Attempting admin reconnection...');
-        console.log('🔄 [useQuiz] Room:', state.room.code);
-        console.log('🔄 [useQuiz] Admin:', state.adminData.name);
+      // Check for admin reconnection after a short delay to allow state to update
+      setTimeout(() => {
+        // Get admin data from localStorage for reconnection
+        const savedAdminData = localStorage.getItem('quiz_admin_data');
+        const savedRoomData = localStorage.getItem('quiz_room_data');
         
-        // Send admin reconnection event
-        const reconnectEvent = {
-          type: 'admin_reconnect' as const,
-          roomCode: state.room.code,
-          adminName: state.adminData.name,
-          adminEmail: state.adminData.email,
-        };
+        console.log('🔄 [useQuiz] Checking for admin reconnection...');
+        console.log('🔄 [useQuiz] Saved admin data:', savedAdminData);
+        console.log('🔄 [useQuiz] Saved room data:', savedRoomData);
         
-        setTimeout(() => {
-          console.log('🔄 [useQuiz] Sending admin reconnect event:', reconnectEvent);
-          ws.send(reconnectEvent);
-        }, 1000); // Wait a bit for connection to stabilize
-      }
+        if (savedRoomData && savedAdminData) {
+          try {
+            const adminData = JSON.parse(savedAdminData);
+            const roomData = JSON.parse(savedRoomData);
+            
+            console.log('🔄 [useQuiz] Attempting admin reconnection...');
+            console.log('🔄 [useQuiz] Room:', roomData.code);
+            console.log('🔄 [useQuiz] Admin:', adminData.name);
+            
+            // Send admin reconnection event
+            const reconnectEvent = {
+              type: 'admin_reconnect' as const,
+              roomCode: roomData.code,
+              adminName: adminData.name,
+              adminEmail: adminData.email,
+            };
+            
+            console.log('🔄 [useQuiz] Sending admin reconnect event:', reconnectEvent);
+            ws.send(reconnectEvent);
+          } catch (error) {
+            console.error('❌ [useQuiz] Error parsing saved data:', error);
+          }
+        } else {
+          console.log('🔄 [useQuiz] No admin reconnection needed');
+        }
+      }, 2000); // Wait for state to update
       
       console.log('✅ [useQuiz] Connection setup complete');
     } catch (error) {
       console.error('❌ [useQuiz] Failed to connect to WebSocket:', error);
       dispatch(setError('Failed to connect to server'));
     }
-  }, [dispatch, state.adminData, state.isAdmin, state.room]);
+  }, [dispatch]);
 
   const disconnectWebSocket = useCallback(() => {
     console.log('🔌 [useQuiz] disconnect() called');
@@ -164,10 +193,15 @@ export const useQuiz = () => {
     
     // Store admin data if provided
     if (adminName) {
-      dispatch(setAdminData({
+      const adminData = {
         name: adminName,
         email: adminEmail || '',
-      }));
+      };
+      dispatch(setAdminData(adminData));
+      
+      // Save to localStorage for reconnection
+      localStorage.setItem('quiz_admin_data', JSON.stringify(adminData));
+      console.log('💾 [useQuiz] Saved admin data to localStorage:', adminData);
     }
     
     const event = { type: 'create_room' as const };
