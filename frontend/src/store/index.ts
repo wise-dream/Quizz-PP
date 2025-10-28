@@ -1,22 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import quizReducer from './quizSlice';
 
-// Load initial state from localStorage
-const loadStateFromStorage = () => {
-  try {
-    const serializedState = localStorage.getItem('quiz_state');
-    if (serializedState === null) {
-      return undefined;
-    }
-    const parsedState = JSON.parse(serializedState);
-    console.log('🔄 [Store] Loaded state from localStorage:', parsedState);
-    return parsedState;
-  } catch (err) {
-    console.error('❌ [Store] Error loading state from localStorage:', err);
-    return undefined;
-  }
-};
-
 // Save state to localStorage middleware
 const saveStateToStorage = (store: any) => (next: any) => (action: any) => {
   const result = next(action);
@@ -47,7 +31,6 @@ export const store = configureStore({
   reducer: {
     quiz: quizReducer,
   },
-  preloadedState: loadStateFromStorage(),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {

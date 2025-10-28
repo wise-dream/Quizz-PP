@@ -21,6 +21,32 @@ export const useQuiz = () => {
   
   console.log('🔄 [useQuiz] Current Redux state:', state);
 
+  // Load state from localStorage on mount
+  useEffect(() => {
+    console.log('🔄 [useQuiz] Loading state from localStorage...');
+    try {
+      const savedState = localStorage.getItem('quiz_state');
+      if (savedState) {
+        const parsedState = JSON.parse(savedState);
+        console.log('🔄 [useQuiz] Loaded state from localStorage:', parsedState);
+        
+        if (parsedState.quiz) {
+          if (parsedState.quiz.room) {
+            dispatch(setRoom(parsedState.quiz.room));
+          }
+          if (parsedState.quiz.user) {
+            dispatch(setUser(parsedState.quiz.user));
+          }
+          if (parsedState.quiz.adminData) {
+            dispatch(setAdminData(parsedState.quiz.adminData));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ [useQuiz] Error loading state from localStorage:', error);
+    }
+  }, [dispatch]);
+
   const connect = useCallback(async (url: string) => {
     console.log('🚀 [useQuiz] connect() called with URL:', url);
     try {
@@ -207,7 +233,7 @@ export const useQuiz = () => {
     const event = { type: 'create_room' as const };
     console.log('🏠 [useQuiz] Calling sendEvent with:', event);
     sendEvent(event);
-  }, [sendEvent, dispatch]);
+  }, [sendEvent, dispatch, state.adminData?.name]);
 
   const joinRoom = useCallback((roomCode: string, nickname: string) => {
     console.log('🚪 [useQuiz] joinRoom() called');
