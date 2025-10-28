@@ -5,7 +5,7 @@
 ```bash
 # Клонируйте репозиторий
 git clone <repository-url>
-cd "PowerPoint Quizz"
+cd "PowerPoint Quiz"
 
 # Запустите автоматический скрипт развертывания
 ./deploy.sh

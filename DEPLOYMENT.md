@@ -69,7 +69,7 @@ sudo ufw enable
 ```bash
 # Клонирование проекта
 git clone <your-repository-url>
-cd "PowerPoint Quizz"
+cd "PowerPoint Quiz"
 
 # Простое развертывание
 ./generate-certs.sh

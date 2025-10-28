@@ -17,7 +17,7 @@ PowerPoint Quiz Controller - это комплексное решение для
 ```bash
 # Клонируйте репозиторий
 git clone <repository-url>
-cd "PowerPoint Quizz"
+cd "PowerPoint Quiz"
 
 # Запустите автоматический скрипт развертывания
 ./deploy.sh
@@ -203,7 +203,7 @@ WS_MAX_MESSAGE_SIZE=512
 
 ### Структура проекта
 ```
-PowerPoint Quizz/
+PowerPoint Quiz/
 ├── backend/                 # Go бэкенд
 │   ├── cmd/
 │   │   └── server/
