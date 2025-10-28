@@ -268,6 +268,17 @@ func (ws *WebSocketService) handleHostSetState(client *models.Client, room *mode
 			ws.broadcastToRoom(room, phaseChangedEvent)
 			ws.broadcastRoomState(room)
 		}()
+	} else if event.Phase == models.PhaseStarted {
+		// Direct transition to started phase
+		room.Phase = models.PhaseStarted
+		room.EnableAt = time.Now()
+
+		// Send phase changed event
+		phaseChangedEvent := models.Event{
+			Type:  models.EventPhaseChanged,
+			Phase: event.Phase,
+		}
+		ws.broadcastToRoom(room, phaseChangedEvent)
 	} else {
 		room.Phase = event.Phase
 
@@ -388,15 +399,13 @@ func (ws *WebSocketService) handleAdminAuth(client *models.Client, event models.
 func (ws *WebSocketService) handleJoinTeam(client *models.Client, room *models.Room, event models.Event) {
 	player, exists := room.Players[event.UserID]
 	if !exists {
-		// Create player if not exists
-		player = &models.Player{
-			ID:        event.UserID,
-			UserID:    event.UserID,
-			Name:      event.Nickname,
-			Connected: true,
-		}
-		room.Players[event.UserID] = player
-	} else {
+		log.Printf("Player %s not found in room, cannot join team", event.UserID)
+		ws.sendErrorToClient(client, "Player not found in room")
+		return
+	}
+
+	// Update player name if provided
+	if event.Nickname != "" {
 		player.Name = event.Nickname
 	}
 
@@ -414,7 +423,7 @@ func (ws *WebSocketService) handleJoinTeam(client *models.Client, room *models.R
 
 		// Add to new team
 		team.Players = append(team.Players, event.UserID)
-		log.Printf("Player %s joined team %s", event.Nickname, team.Name)
+		log.Printf("Player %s joined team %s", player.Name, team.Name)
 
 		// Send team joined event to all clients in the room
 		teamJoinedEvent := models.Event{
@@ -425,6 +434,10 @@ func (ws *WebSocketService) handleJoinTeam(client *models.Client, room *models.R
 			Data:     player,
 		}
 		ws.broadcastToRoom(room, teamJoinedEvent)
+	} else {
+		log.Printf("Team %s not found", event.TeamID)
+		ws.sendErrorToClient(client, "Team not found")
+		return
 	}
 
 	ws.broadcastRoomState(room)
